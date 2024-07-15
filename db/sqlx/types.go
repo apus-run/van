@@ -85,3 +85,17 @@ func Apply(opts ...Option) *Config {
 	}
 	return options
 }
+
+// WithDriver .
+func WithDriver(driver Driver) Option {
+	return func(o *Config) {
+		o.Driver = driver
+	}
+}
+
+// WithDSN .
+func WithDSN(dsn string) Option {
+	return func(o *Config) {
+		o.DSN = dsn
+	}
+}
