@@ -1,10 +1,10 @@
 package grpc
 
 import (
+	"context"
+	"github.com/apus-run/van/server"
 	"google.golang.org/grpc"
 	"net"
-
-	"github.com/apus-run/van/server"
 )
 
 var _ server.Server = (*Server)(nil)
@@ -23,7 +23,7 @@ func NewServer(grpcServer *grpc.Server, opts ...Option) *Server {
 	return srv
 }
 
-func (s *Server) Start() error {
+func (s *Server) Start(ctx context.Context) error {
 	lis, err := net.Listen("tcp", s.opts.Addr)
 	if err != nil {
 		return err
@@ -31,7 +31,10 @@ func (s *Server) Start() error {
 	return s.srv.Serve(lis)
 }
 
-func (s *Server) Stop() error {
+func (s *Server) Stop(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, s.opts.ShutdownTimeout)
+	defer cancel()
+
 	s.srv.GracefulStop()
 	return nil
 }

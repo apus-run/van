@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -25,10 +26,10 @@ func TestNewServer(t *testing.T) {
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
 
 		time.Sleep(1 * time.Second)
-		err = server.Stop()
+		err = server.Stop(context.Background())
 		assert.NoError(t, err)
 		t.Log("shutdown completed")
 	}()
 
-	_ = server.Start()
+	_ = server.Start(context.Background())
 }

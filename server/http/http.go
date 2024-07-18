@@ -26,17 +26,17 @@ func NewServer(handler http.Handler, opts ...Option) *Server {
 	return srv
 }
 
-func (s *Server) Start() error {
+func (s *Server) Start(ctx context.Context) error {
 	err := s.srv.ListenAndServe()
-	if !errors.Is(err, http.ErrServerClosed) {
-		return err
+	if err != nil && errors.Is(err, http.ErrServerClosed) {
+		return nil
 	}
-	return nil
+	return err
 }
 
-func (s *Server) Stop() error {
+func (s *Server) Stop(ctx context.Context) error {
 	// 创建 ctx 用于通知服务器 goroutine, 它有 10 秒时间完成当前正在处理的请求
-	ctx, cancel := context.WithTimeout(context.Background(), s.opts.ShutdownTimeout)
+	ctx, cancel := context.WithTimeout(ctx, s.opts.ShutdownTimeout)
 	defer cancel()
 	return s.srv.Shutdown(ctx)
 }
