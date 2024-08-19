@@ -1,4 +1,4 @@
-package errors
+package errx
 
 // BadRequest new BadRequest error
 func BadRequest(reason string) *Error {

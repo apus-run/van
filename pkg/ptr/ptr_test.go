@@ -8,6 +8,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestPointer(t *testing.T) {
+	s1 := ToPtr("")
+	if s1 == nil || *s1 != "" {
+		t.Fatalf("Expected empty string pointer, got %#v", s1)
+	}
+
+	s2 := ToPtr("test")
+	if s2 == nil || *s2 != "test" {
+		t.Fatalf("Expected 'test' string pointer, got %#v", s2)
+	}
+
+	s3 := ToPtr(123)
+	if s3 == nil || *s3 != 123 {
+		t.Fatalf("Expected 123 string pointer, got %#v", s3)
+	}
+}
+
 func TestToPtr(t *testing.T) {
 	t.Run("int", func(t *testing.T) {
 		i := 1

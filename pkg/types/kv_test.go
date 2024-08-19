@@ -1,4 +1,4 @@
-package kv
+package types
 
 import (
 	"strconv"

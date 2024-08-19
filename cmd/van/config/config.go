@@ -1,4 +1,4 @@
-package main
+package config
 
 const (
 	Release      = "v0.2.0"

@@ -29,6 +29,12 @@ type Database interface {
 	CloseDB(ctx context.Context, options ...Option) error
 }
 
+// Transaction 事物接口
+type Transaction interface {
+	// Execute 执行一个事务方法，func为一个需要保证事务完整性的业务方法
+	Execute(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 type Helper struct {
 	lock  *sync.RWMutex
 	group *singleflight.Group
