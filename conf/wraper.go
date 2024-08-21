@@ -18,17 +18,10 @@ type Config struct {
 }
 
 func New(files []Source) *Config {
-	conf := &Config{
+	return &Config{
 		files:  files,
 		cached: &sync.Map{},
 	}
-
-	err := conf.Load()
-	if err != nil {
-		return nil
-	}
-
-	return conf
 }
 
 func (c *Config) Watch(fn func()) {

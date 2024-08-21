@@ -23,9 +23,13 @@ func TestLoad(t *testing.T) {
 		c := conf.New([]conf.Source{
 			file.NewSource("testdata/dev.yaml"),
 		})
+		err := c.Load()
+
+		assert.NoError(t, err)
+
 		assert.NotNil(t, c)
 
-		err := c.File("dev").UnmarshalKey("db", &db)
+		err = c.File("dev").UnmarshalKey("db", &db)
 		if err != nil {
 			t.Fatalf("unmarshal key error: %v", err)
 		}
