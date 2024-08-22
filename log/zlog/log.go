@@ -23,6 +23,14 @@ func NewZapLogger(l *zap.Logger) Logger {
 	}
 }
 
+func ZapDevConfig() zap.Config {
+	return zap.NewDevelopmentConfig()
+}
+
+func ZapProdConfig() zap.Config {
+	return zap.NewProductionConfig()
+}
+
 // NewLogger 包装了 zap 和日志文件切割归档
 func NewLogger(opts ...Option) *ZapLogger {
 	options := Apply(opts...)
