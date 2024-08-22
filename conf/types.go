@@ -2,6 +2,9 @@ package conf
 
 import "github.com/spf13/viper"
 
+// Viper 别名
+type V = *viper.Viper
+
 // KV KeyValue is conf key value.
 type KV struct {
 	Key    string
