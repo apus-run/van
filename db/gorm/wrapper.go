@@ -29,6 +29,8 @@ type Transaction interface {
 	Execute(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
+type DB = gorm.DB
+
 type Helper struct {
 	lock  *sync.RWMutex
 	group *singleflight.Group

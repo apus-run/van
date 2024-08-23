@@ -11,6 +11,10 @@ import (
 var _ Database = (*Helper)(nil)
 
 type (
+	// Cmdable is an alias of redis.Cmdable.
+	Cmdable = redis.Cmdable
+	// BoolCmd is an alias of redis.BoolCmd.
+	BoolCmd = redis.BoolCmd
 	// IntCmd is an alias of redis.IntCmd.
 	IntCmd = redis.IntCmd
 	// FloatCmd is an alias of redis.FloatCmd.
