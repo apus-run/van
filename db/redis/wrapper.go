@@ -11,8 +11,21 @@ import (
 var _ Database = (*Helper)(nil)
 
 type (
+	// Options is an alias of redis.Options.
+	Options = redis.Options
+	// Client is an alias of redis.Client.
+	Client = redis.Client
+	// Tx is an alias of redis.Tx.
+	Tx = redis.Tx
 	// Cmdable is an alias of redis.Cmdable.
 	Cmdable = redis.Cmdable
+	// Pipeline is an alias of redis.Pipeline.
+	Pipeline = redis.Pipeline
+
+	// StatusCmd is an alias of redis.StatusCmd.
+	StatusCmd = redis.StatusCmd
+	// StringSliceCmd is an alias of redis.StringSliceCmd.
+	StringSliceCmd = redis.StringSliceCmd
 	// BoolCmd is an alias of redis.BoolCmd.
 	BoolCmd = redis.BoolCmd
 	// IntCmd is an alias of redis.IntCmd.
