@@ -28,10 +28,10 @@ func TestNewServer(t *testing.T) {
 		assert.NoError(t, err)
 
 		time.Sleep(1 * time.Second)
-		err = server.Stop()
+		err = server.Stop(ctx)
 		assert.NoError(t, err)
 		t.Log("shutdown completed")
 	}()
 
-	_ = server.Start()
+	_ = server.Start(context.Background())
 }

@@ -10,6 +10,7 @@ var Cmd = &cobra.Command{
 	Short: "Create a model",
 	Long:  "Create a model using the repository template. Example: van new helloworld",
 	Run:   run,
+	Args:  cobra.NoArgs,
 }
 
 func run(cmd *cobra.Command, args []string) {

@@ -1,6 +1,9 @@
 package grpc
 
-import "time"
+import (
+	"crypto/tls"
+	"time"
+)
 
 // Option is server option.
 type Option func(*Options)
@@ -9,14 +12,21 @@ type Option func(*Options)
 type Options struct {
 	Addr string
 
-	ShutdownTimeout time.Duration
+	// TLS config.
+	TlsConfig *tls.Config
+
+	IdleTimeout  time.Duration
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
 }
 
 // DefaultOptions is server default options.
 func DefaultOptions() *Options {
 	return &Options{
-		Addr:            ":8090",
-		ShutdownTimeout: 10 * time.Second,
+		Addr:         ":8090",
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
 	}
 }
 
@@ -35,8 +45,27 @@ func WithAddr(addr string) Option {
 	}
 }
 
-func WithShutdownTimeout(t time.Duration) Option {
+func WithIdleTimeout(t time.Duration) Option {
 	return func(options *Options) {
-		options.ShutdownTimeout = t
+		options.IdleTimeout = t
+	}
+}
+
+func WithReadTimeout(t time.Duration) Option {
+	return func(options *Options) {
+		options.ReadTimeout = t
+	}
+}
+
+func WithWriteTimeout(t time.Duration) Option {
+	return func(options *Options) {
+		options.WriteTimeout = t
+	}
+}
+
+// TLSConfig with TLS config.
+func TLSConfig(c *tls.Config) Option {
+	return func(options *Options) {
+		options.TlsConfig = c
 	}
 }

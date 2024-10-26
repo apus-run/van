@@ -9,6 +9,7 @@ var Cmd = &cobra.Command{
 	Short: "Upgrade the van tools",
 	Long:  "Upgrade the van tools. Example: van upgrade",
 	Run:   Run,
+	Args:  cobra.NoArgs,
 }
 
 // Run upgrade the van tools.

@@ -19,6 +19,7 @@ var Cmd = &cobra.Command{
 	Short:   "Create a new project.",
 	Long:    "create a new project with van layout.",
 	Run:     run,
+	Args:    cobra.NoArgs,
 }
 
 var (
@@ -28,8 +29,9 @@ var (
 
 func init() {
 	timeout = "60s"
-	Cmd.Flags().StringVarP(&repoURL, "repo-url", "r", repoURL, "layout repo")
-	Cmd.Flags().StringVarP(&timeout, "timeout", "t", timeout, "time out")
+	f := Cmd.Flags()
+	f.StringVarP(&repoURL, "repo-url", "r", repoURL, "layout repo")
+	f.StringVarP(&timeout, "timeout", "t", timeout, "time out")
 }
 
 func run(_ *cobra.Command, args []string) {

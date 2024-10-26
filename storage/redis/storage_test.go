@@ -5,514 +5,293 @@ import (
 	"testing"
 	"time"
 
-	memory "github.com/apus-run/van/storage/lru"
+	"github.com/apus-run/van/storage/mocks"
+	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 
-	"github.com/stretchr/testify/require"
+	errs "github.com/apus-run/van/storage/internal/errs"
+	cache "github.com/apus-run/van/storage/redis"
 )
 
-func Test_Memory(t *testing.T) {
-	t.Parallel()
-	store := memory.New()
-	var (
-		key     = "john-internal"
-		val any = "doe"
-		exp     = 1 * time.Second
-		ctx     = context.Background()
-	)
+func TestCache_Set(t *testing.T) {
+	testCases := []struct {
+		name string
 
-	// Set key with value
-	err := store.Set(ctx, key, val, 0)
-	require.NoError(t, err)
-	result, err := store.Get(ctx, key)
-	require.NoError(t, err)
-	require.Equal(t, val, result)
+		mock func(*gomock.Controller) redis.Cmdable
 
-	// Get non-existing key
-	result, err = store.Get(ctx, "empty")
-	require.Error(t, err)
-	require.Nil(t, result)
+		key        string
+		value      string
+		expiration time.Duration
 
-	// Set key with value and ttl
-	err = store.Set(ctx, key, val, exp)
-	require.NoError(t, err)
-	time.Sleep(1100 * time.Millisecond)
-	result, err = store.Get(ctx, key)
-	require.Error(t, err)
-	require.Nil(t, result)
+		wantErr error
+	}{
+		{
+			name: "set value",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewStatusCmd(context.Background())
+				status.SetVal("OK")
+				cmd.EXPECT().
+					Set(context.Background(), "name", "foo", time.Minute).
+					Return(status)
+				return cmd
+			},
+			key:        "name",
+			value:      "foo",
+			expiration: time.Minute,
+		},
+		{
+			name: "timeout",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewStatusCmd(context.Background())
+				status.SetErr(context.DeadlineExceeded)
+				cmd.EXPECT().
+					Set(context.Background(), "name", "foo", time.Minute).
+					Return(status)
+				return cmd
+			},
+			key:        "name",
+			value:      "foo",
+			expiration: time.Minute,
 
-	// Set key with value and no expiration
-	err = store.Set(ctx, key, val, 0)
-	require.NoError(t, err)
-	result, err = store.Get(ctx, key)
-	require.NoError(t, err)
-	require.Equal(t, val, result)
-
-	// Delete key
-	err = store.Delete(ctx, key)
-	require.NoError(t, err)
-	result, err = store.Get(ctx, key)
-	require.Error(t, err)
-	require.Nil(t, result)
-
-	// Reset all keys
-	err = store.Set(ctx, "john-reset", val, 0)
-	require.NoError(t, err)
-	err = store.Set(ctx, "doe-reset", val, 0)
-	require.NoError(t, err)
-	err = store.Flush(ctx)
-	require.NoError(t, err)
-
-	// Check if all keys are deleted
-	result, err = store.Get(ctx, "john-reset")
-	require.Error(t, err)
-	require.Nil(t, result)
-	result, err = store.Get(ctx, "doe-reset")
-	require.Error(t, err)
-	require.Nil(t, result)
+			wantErr: context.DeadlineExceeded,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			c := cache.New(tc.mock(ctrl))
+			err := c.Set(context.Background(), tc.key, tc.value, tc.expiration)
+			assert.Equal(t, tc.wantErr, err)
+		})
+	}
 }
 
-func Benchmark_Memory(b *testing.B) {
-	ctx := context.Background()
-	keyLength := 1000
-	keys := make([]string, keyLength)
-	for i := 0; i < keyLength; i++ {
-		keys[i] = uuid.New().String()
+func TestCache_Get(t *testing.T) {
+	testCases := []struct {
+		name string
+
+		mock func(*gomock.Controller) redis.Cmdable
+
+		key string
+
+		wantErr error
+		wantVal string
+	}{
+		{
+			name: "get value",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewStringCmd(context.Background())
+				status.SetVal("foo")
+				cmd.EXPECT().
+					Get(context.Background(), "name").
+					Return(status)
+				return cmd
+			},
+			key: "name",
+
+			wantVal: "foo",
+		},
+		{
+			name: "get error",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewStringCmd(context.Background())
+				status.SetErr(redis.Nil)
+				cmd.EXPECT().
+					Get(context.Background(), "name").
+					Return(status)
+				return cmd
+			},
+			key: "name",
+
+			wantErr: errs.ErrKeyNotExist,
+		},
 	}
-	value := []byte("joe")
-
-	ttl := 2 * time.Second
-	b.Run("fiber_memory", func(b *testing.B) {
-		d := memory.New()
-		b.ReportAllocs()
-		b.ResetTimer()
-		for n := 0; n < b.N; n++ {
-			for _, key := range keys {
-				_ = d.Set(ctx, key, value, ttl)
-
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			c := cache.New(tc.mock(ctrl))
+			val, err := c.Get(context.Background(), tc.key)
+			assert.Equal(t, tc.wantErr, err)
+			if err != nil {
+				return
 			}
-			for _, key := range keys {
-				_, _ = d.Get(ctx, key)
+			assert.Equal(t, tc.wantVal, val.(string))
+		})
+	}
+}
+
+func TestCache_GetAny(t *testing.T) {
+	testCases := []struct {
+		name string
+
+		mock func(*gomock.Controller) redis.Cmdable
+
+		key string
+
+		wantErr error
+		wantVal string
+	}{
+		{
+			name: "get value",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewStringCmd(context.Background())
+				status.SetVal("foo")
+				cmd.EXPECT().
+					Get(context.Background(), "name").
+					Return(status)
+				return cmd
+			},
+			key: "name",
+
+			wantVal: "foo",
+		},
+		{
+			name: "get error",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewStringCmd(context.Background())
+				status.SetErr(redis.Nil)
+				cmd.EXPECT().
+					Get(context.Background(), "name").
+					Return(status)
+				return cmd
+			},
+			key: "name",
+
+			wantErr: errs.ErrKeyNotExist,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			c := cache.New(tc.mock(ctrl))
+			val := c.GetAny(context.Background(), tc.key)
+			assert.Equal(t, tc.wantErr, val.Error)
+			if val.Error != nil {
+				return
 			}
-			for _, key := range keys {
-				_ = d.Delete(ctx, key)
-
-			}
-		}
-	})
-}
-
-func Test_Storage_Memory_Set(t *testing.T) {
-
-	t.Parallel()
-	var (
-		testStore        = memory.New()
-		key       string = "john"
-		val       any    = "hello"
-		ctx              = context.Background()
-	)
-
-	err := testStore.Set(ctx, key, val, 0)
-	require.NoError(t, err)
-
-	keys := testStore.Keys(ctx)
-	require.Len(t, keys, 1)
-}
-
-func Test_Storage_Memory_Set_Override(t *testing.T) {
-	t.Parallel()
-	var (
-		testStore        = memory.New()
-		key       string = "john"
-		val       any    = "hello"
-		ctx              = context.Background()
-	)
-
-	err := testStore.Set(ctx, key, val, 0)
-	require.NoError(t, err)
-
-	err = testStore.Set(ctx, key, val, 0)
-	require.NoError(t, err)
-
-	keys := testStore.Keys(ctx)
-
-	require.Len(t, keys, 1)
-}
-
-func Test_Storage_Memory_Get(t *testing.T) {
-	t.Parallel()
-	var (
-		testStore        = memory.New()
-		key       string = "john"
-		val       any    = "hello"
-		ctx              = context.Background()
-	)
-
-	err := testStore.Set(ctx, key, val, 0)
-	require.NoError(t, err)
-
-	result, err := testStore.Get(ctx, key)
-	t.Logf("值为: %v", result)
-	require.NoError(t, err)
-	require.Equal(t, val, result)
-
-	keys := testStore.Keys(ctx)
-	require.NoError(t, err)
-	require.Len(t, keys, 1)
-}
-
-func Test_Storage_Memory_Set_Expiration(t *testing.T) {
-	t.Parallel()
-	var (
-		testStore     = memory.New(memory.WithGCInterval(300 * time.Millisecond))
-		key           = "john"
-		val       any = "hello"
-		exp           = 1 * time.Second
-		ctx           = context.Background()
-	)
-
-	err := testStore.Set(ctx, key, val, exp)
-	require.NoError(t, err)
-
-	// interval + expire + buffer
-	time.Sleep(1500 * time.Millisecond)
-
-	result, err := testStore.Get(ctx, key)
-	t.Logf("错误为: %v", err)
-	t.Logf("值为: %v", result)
-	require.Error(t, err)
-	require.Nil(t, result)
-
-	keys := testStore.Keys(ctx)
-	t.Logf("值为: %v", len(keys))
-	require.Nil(t, keys)
-}
-
-func Test_Storage_Memory_Set_Long_Expiration_with_Keys(t *testing.T) {
-	t.Parallel()
-	var (
-		testStore     = memory.New()
-		key           = "john"
-		val       any = "hello"
-		exp           = 3 * time.Second
-		ctx           = context.Background()
-	)
-
-	keys := testStore.Keys(ctx)
-	require.Nil(t, keys)
-
-	err := testStore.Set(ctx, key, val, exp)
-	require.NoError(t, err)
-
-	time.Sleep(1100 * time.Millisecond)
-
-	keys = testStore.Keys(ctx)
-	require.Len(t, keys, 1)
-
-	time.Sleep(4000 * time.Millisecond)
-	result, err := testStore.Get(ctx, key)
-	t.Logf("错误为: %v", err)
-	t.Logf("值为: %v", result)
-	require.Error(t, err)
-	require.Nil(t, result)
-
-	keys = testStore.Keys(ctx)
-	t.Logf("值为: %v", len(keys))
-	require.Nil(t, keys)
-}
-
-func Test_Storage_Memory_Get_NotExist(t *testing.T) {
-	t.Parallel()
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	result, err := testStore.Get(ctx, "notexist")
-	t.Logf("错误为: %v", err)
-	t.Logf("值为: %v", result)
-	require.Error(t, err)
-	require.Nil(t, result)
-
-	keys := testStore.Keys(ctx)
-	require.Nil(t, keys)
-}
-
-func Test_Storage_Memory_Delete(t *testing.T) {
-	t.Parallel()
-	var (
-		testStore     = memory.New()
-		key           = "john"
-		val       any = "hello"
-		ctx           = context.Background()
-	)
-
-	err := testStore.Set(ctx, key, val, 0)
-	require.NoError(t, err)
-
-	keys := testStore.Keys(ctx)
-	require.NoError(t, err)
-	require.Len(t, keys, 1)
-
-	err = testStore.Delete(ctx, key)
-	require.NoError(t, err)
-
-	result, err := testStore.Get(ctx, key)
-	t.Logf("错误为: %v", err)
-	t.Logf("值为: %v", result)
-	require.Error(t, err)
-	require.Nil(t, result)
-
-	keys = testStore.Keys(ctx)
-	require.Nil(t, keys)
-}
-
-func Test_Storage_Memory_Reset(t *testing.T) {
-	t.Parallel()
-	var (
-		testStore     = memory.New()
-		val       any = "hello"
-		ctx           = context.Background()
-	)
-
-	err := testStore.Set(ctx, "john1", val, 0)
-	require.NoError(t, err)
-
-	err = testStore.Set(ctx, "john2", val, 0)
-	require.NoError(t, err)
-
-	keys := testStore.Keys(ctx)
-	t.Logf("值为: %v", keys)
-	require.Len(t, keys, 2)
-
-	isBoll := testStore.Contains(ctx, keys[0])
-	require.True(t, isBoll)
-
-	err = testStore.Flush(ctx)
-	require.NoError(t, err)
-
-	result, err := testStore.Get(ctx, "john1")
-	require.Error(t, err)
-	require.Nil(t, result)
-
-	result, err = testStore.Get(ctx, "john2")
-	require.Error(t, err)
-	require.Nil(t, result)
-
-	keys = testStore.Keys(ctx)
-	require.Nil(t, keys)
-}
-
-func Test_Storage_Memory_Close(t *testing.T) {
-	t.Parallel()
-
-	var (
-		testStore = memory.New()
-	)
-
-	err := testStore.Close()
-	t.Logf("错误为: %v", err)
-	require.NoError(t, err)
-
-}
-
-func Test_Storage_Memory_Conn(t *testing.T) {
-	t.Parallel()
-	testStore := memory.New()
-	require.NotNil(t, testStore.Conn())
-}
-
-// Benchmarks for Set operation
-func Benchmark_Memory_Set(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_ = testStore.Set(ctx, "john", "doe", 0) //nolint: errcheck // error not needed for benchmark
+			assert.Equal(t, tc.wantVal, val.Value.(string))
+		})
 	}
 }
 
-func Benchmark_Memory_Set_Parallel(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	b.ReportAllocs()
-	b.ResetTimer()
+func TestCache_Delete(t *testing.T) {
+	testCases := []struct {
+		name string
 
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_ = testStore.Set(ctx, "john", "doe", 0) //nolint: errcheck // error not needed for benchmark
-		}
-	})
-}
+		mock func(*gomock.Controller) redis.Cmdable
 
-func Benchmark_Memory_Set_Asserted(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	b.ReportAllocs()
-	b.ResetTimer()
+		key string
 
-	for i := 0; i < b.N; i++ {
-		err := testStore.Set(ctx, "john", "doe", 0)
-		require.NoError(b, err)
+		wantN   int64
+		wantErr error
+	}{
+		{
+			name: "delete single existed key",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewIntCmd(context.Background())
+				status.SetVal(int64(1))
+				status.SetErr(nil)
+				cmd.EXPECT().
+					Del(context.Background(), gomock.Any()).
+					Return(status)
+				return cmd
+			},
+			key:   "name",
+			wantN: 1,
+		},
+		{
+			name: "delete single does not existed key",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewIntCmd(context.Background())
+				status.SetVal(int64(0))
+				status.SetErr(nil)
+				cmd.EXPECT().
+					Del(context.Background(), gomock.Any()).
+					Return(status)
+				return cmd
+			},
+			key: "name",
+		},
+		{
+			name: "delete single existed key",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewIntCmd(context.Background())
+				status.SetVal(int64(2))
+				status.SetErr(nil)
+				cmd.EXPECT().
+					Del(context.Background(), gomock.Any()).
+					Return(status)
+				return cmd
+			},
+			key:   "age",
+			wantN: 2,
+		},
+		{
+			name: "delete single do not existed key",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewIntCmd(context.Background())
+				status.SetVal(0)
+				status.SetErr(nil)
+				cmd.EXPECT().
+					Del(context.Background(), gomock.Any()).
+					Return(status)
+				return cmd
+			},
+			key: "age",
+		},
+		{
+			name: "delete key, some do not existed key",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewIntCmd(context.Background())
+				status.SetVal(1)
+				status.SetErr(nil)
+				cmd.EXPECT().
+					Del(context.Background(), gomock.Any()).
+					Return(status)
+				return cmd
+			},
+			key:   "name",
+			wantN: 1,
+		},
+		{
+			name: "timeout",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := mocks.NewMockCmdable(ctrl)
+				status := redis.NewIntCmd(context.Background())
+				status.SetVal(0)
+				status.SetErr(context.DeadlineExceeded)
+				cmd.EXPECT().
+					Del(context.Background(), gomock.Any()).
+					Return(status)
+				return cmd
+			},
+			key:     "name",
+			wantErr: context.DeadlineExceeded,
+		},
 	}
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			c := cache.New(tc.mock(ctrl))
+			err := c.Delete(context.Background(), tc.key)
 
-func Benchmark_Memory_Set_Asserted_Parallel(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			err := testStore.Set(ctx, "john", "doe", 0)
-			require.NoError(b, err)
-		}
-	})
-}
-
-// Benchmarks for Get operation
-func Benchmark_Memory_Get(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	err := testStore.Set(ctx, "john", "doe", 0)
-	require.NoError(b, err)
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, _ = testStore.Get(ctx, "john") //nolint: errcheck // error not needed for benchmark
+			assert.Equal(t, tc.wantErr, err)
+		})
 	}
-}
-
-func Benchmark_Memory_Get_Parallel(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	err := testStore.Set(ctx, "john", "doe", 0)
-	require.NoError(b, err)
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, _ = testStore.Get(ctx, "john") //nolint: errcheck // error not needed for benchmark
-		}
-	})
-}
-
-func Benchmark_Memory_Get_Asserted(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	err := testStore.Set(ctx, "john", "doe", 0)
-	require.NoError(b, err)
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, err := testStore.Get(ctx, "john")
-		require.NoError(b, err)
-	}
-}
-
-func Benchmark_Memory_Get_Asserted_Parallel(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	err := testStore.Set(ctx, "john", "doe", 0)
-	require.NoError(b, err)
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, err := testStore.Get(ctx, "john")
-			require.NoError(b, err)
-		}
-	})
-}
-
-// Benchmarks for SetAndDelete operation
-func Benchmark_Memory_SetAndDelete(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_ = testStore.Set(ctx, "john", "doe", 0) //nolint: errcheck // error not needed for benchmark
-		_ = testStore.Delete(ctx, "john")        //nolint: errcheck // error not needed for benchmark
-	}
-}
-
-func Benchmark_Memory_SetAndDelete_Parallel(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_ = testStore.Set(ctx, "john", "doe", 0) //nolint: errcheck // error not needed for benchmark
-			_ = testStore.Delete(ctx, "john")        //nolint: errcheck // error not needed for benchmark
-		}
-	})
-}
-
-func Benchmark_Memory_SetAndDelete_Asserted(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		err := testStore.Set(ctx, "john", "doe", 0)
-		require.NoError(b, err)
-
-		err = testStore.Delete(ctx, "john")
-		require.NoError(b, err)
-	}
-}
-
-func Benchmark_Memory_SetAndDelete_Asserted_Parallel(b *testing.B) {
-	var (
-		testStore = memory.New()
-		ctx       = context.Background()
-	)
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			err := testStore.Set(ctx, "john", "doe", 0)
-			require.NoError(b, err)
-
-			err = testStore.Delete(ctx, "john")
-			require.NoError(b, err)
-		}
-	})
 }

@@ -10,7 +10,7 @@ import (
 // Cmd represents the new command.
 var Cmd = &cobra.Command{
 	Use:   "new",
-	Short: "Create new ",
+	Short: "create new",
 	Long:  "Generate the new files.",
 	Run: func(cmd *cobra.Command, args []string) {
 		err := cmd.Help()
@@ -18,6 +18,7 @@ var Cmd = &cobra.Command{
 			return
 		}
 	},
+	Args: cobra.NoArgs,
 }
 
 func init() {

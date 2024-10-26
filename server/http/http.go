@@ -3,40 +3,64 @@ package http
 import (
 	"context"
 	"errors"
-	"github.com/apus-run/van/server"
 	"net/http"
+
+	"github.com/apus-run/van/server"
 )
 
 var _ server.Server = (*Server)(nil)
 
 type Server struct {
-	opts *Options
-	srv  *http.Server
+	*http.Server
+	options *Options
 }
 
 func NewServer(handler http.Handler, opts ...Option) *Server {
 	options := Apply(opts...)
+
 	srv := &Server{
-		opts: options,
-		srv: &http.Server{
-			Addr:    options.Addr,
-			Handler: handler,
-		},
+		options: options,
+	}
+
+	// 初始化 http.Server
+	if options.TlsConfig != nil {
+		srv.Server = &http.Server{
+			Addr:         options.Addr,
+			Handler:      handler,
+			TLSConfig:    options.TlsConfig,
+			IdleTimeout:  options.IdleTimeout,
+			ReadTimeout:  options.ReadTimeout,
+			WriteTimeout: options.WriteTimeout,
+		}
+	} else {
+		srv.Server = &http.Server{
+			Addr:         options.Addr,
+			Handler:      handler,
+			IdleTimeout:  options.IdleTimeout,
+			ReadTimeout:  options.ReadTimeout,
+			WriteTimeout: options.WriteTimeout,
+		}
 	}
 	return srv
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	err := s.srv.ListenAndServe()
-	if err != nil && errors.Is(err, http.ErrServerClosed) {
-		return nil
+	var err error
+	if s.options.TlsConfig != nil {
+		err = s.ListenAndServeTLS("", "")
+	} else {
+		err = s.ListenAndServe()
 	}
-	return err
+	if errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	// 创建 ctx 用于通知服务器 goroutine, 它有 10 秒时间完成当前正在处理的请求
-	ctx, cancel := context.WithTimeout(ctx, s.opts.ShutdownTimeout)
-	defer cancel()
-	return s.srv.Shutdown(ctx)
+	return s.Shutdown(ctx)
+}
+
+func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	s.Handler.ServeHTTP(res, req)
 }

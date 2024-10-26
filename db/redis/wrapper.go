@@ -15,6 +15,8 @@ type (
 	Options = redis.Options
 	// Client is an alias of redis.Client.
 	Client = redis.Client
+	// UniversalClient is an alias of redis.UniversalClient.
+	UniversalClient = redis.UniversalClient
 	// Tx is an alias of redis.Tx.
 	Tx = redis.Tx
 	// Cmdable is an alias of redis.Cmdable.
