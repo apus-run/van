@@ -13,6 +13,7 @@ var _ server.Server = (*Server)(nil)
 
 type Server struct {
 	*grpc.Server
+	ctx     context.Context
 	options *Options
 }
 
@@ -20,6 +21,7 @@ func NewServer(grpcServer *grpc.Server, opts ...Option) *Server {
 	options := Apply(opts...)
 	srv := &Server{
 		options: options,
+		ctx:     context.Background(),
 		Server:  grpcServer,
 	}
 
@@ -27,6 +29,8 @@ func NewServer(grpcServer *grpc.Server, opts ...Option) *Server {
 }
 
 func (s *Server) Start(ctx context.Context) error {
+	s.ctx = ctx
+
 	lis, err := net.Listen("tcp", s.options.Addr)
 	if err != nil {
 		return err

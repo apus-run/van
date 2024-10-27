@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 
 	"github.com/apus-run/van/server"
@@ -45,6 +46,11 @@ func NewServer(handler http.Handler, opts ...Option) *Server {
 }
 
 func (s *Server) Start(ctx context.Context) error {
+
+	s.BaseContext = func(listener net.Listener) context.Context {
+		return ctx
+	}
+
 	var err error
 	if s.options.TlsConfig != nil {
 		err = s.ListenAndServeTLS("", "")
