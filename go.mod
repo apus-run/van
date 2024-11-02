@@ -145,3 +145,6 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+// Workaround for indirect dependency no longer being available.
+exclude github.com/mitchellh/osext v0.0.0-20151018003038-5e2d6d41470f

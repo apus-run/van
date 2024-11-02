@@ -71,20 +71,20 @@ func (ctx *Context) BytesWritten() int64 {
 	return int64(ctx.Writer.Size())
 }
 
-func (c *Context) Param(key string) value.AnyValue {
+func (ctx *Context) Param(key string) value.AnyValue {
 	return value.AnyValue{
-		Value: c.Context.Param(key),
+		Value: ctx.Context.Param(key),
 	}
 }
 
-func (c *Context) Query(key string) value.AnyValue {
+func (ctx *Context) Query(key string) value.AnyValue {
 	return value.AnyValue{
-		Value: c.Context.Query(key),
+		Value: ctx.Context.Query(key),
 	}
 }
 
-func (c *Context) Cookie(key string) value.AnyValue {
-	val, err := c.Context.Cookie(key)
+func (ctx *Context) Cookie(key string) value.AnyValue {
+	val, err := ctx.Context.Cookie(key)
 	return value.AnyValue{
 		Value: val,
 		Error: err,
@@ -158,15 +158,15 @@ func (ctx *Context) NotFound() {
 
 // GetClientLocale returns the client locale name
 func (ctx *Context) GetClientLocale() string {
-	value := ctx.GetHeader(AcceptLanguageHeaderName)
+	v := ctx.GetHeader(AcceptLanguageHeaderName)
 
-	return value
+	return v
 }
 
 // GetClientTimezoneOffset returns the client timezone offset
 func (ctx *Context) GetClientTimezoneOffset() (int16, error) {
-	value := ctx.GetHeader(ClientTimezoneOffsetHeaderName)
-	offset, err := strconv.Atoi(value)
+	v := ctx.GetHeader(ClientTimezoneOffsetHeaderName)
+	offset, err := strconv.Atoi(v)
 
 	if err != nil {
 		return 0, err
