@@ -1,1 +1,0 @@
-{"time":"2024-07-12T22:37:39+08:00","level":"info","source":"log/slog/log.go:79","msg":"the log module has been initialized successfully.","options":{"LogLevel":"info","Encoding":"console","LogGroup":"","LogAttrs":null,"LogFilename":"logs.log","MaxSize":500,"MaxBackups":3,"MaxAge":28,"Compress":true}}
