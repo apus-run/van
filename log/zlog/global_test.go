@@ -11,7 +11,7 @@ import (
 
 func TestGlobalLogInit(t *testing.T) {
 	la := &loggerAppliance{}
-	logger := NewLogger(WithEncoding("json"), WithFilename("test.log"))
+	logger := NewLogger(WithFormat(FormatJSON))
 	la.SetLogger(logger)
 
 	la.Info("test info")
@@ -43,6 +43,7 @@ func TestGlobalLog(t *testing.T) {
 		zap.Time("time", time.Now()),
 		zap.Duration("duration", time.Duration(int64(10))),
 	)
+
 }
 
 func TestContext(t *testing.T) {

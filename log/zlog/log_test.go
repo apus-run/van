@@ -1,13 +1,28 @@
 package zlog
 
 import (
+	"io"
+	"os"
 	"testing"
 
 	"go.uber.org/zap"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+func getLogWriter() io.Writer {
+	lumberJackLogger := &lumberjack.Logger{
+		Filename:   "logs.log",
+		MaxSize:    500, // megabytes
+		MaxBackups: 3,
+		MaxAge:     28, //days
+		Compress:   true,
+	}
+	return lumberJackLogger
+}
+
 func TestLog(t *testing.T) {
-	logger := NewLogger(WithEncoding("json"), WithFilename("test.log"))
+	wr := getLogWriter()
+	logger := NewLogger(WithFormat(FormatJSON), WithWriters(os.Stdout, wr))
 	defer logger.Close()
 
 	logger.Info("This is an info message", zap.String("route", "/hello"), zap.Int64("port", 8090))

@@ -27,15 +27,21 @@ type Logger interface {
 
 	Print(args ...any)
 	Printf(format string, args ...any)
-	Println(args ...any)
 
 	With(fields ...Field) Logger
 	AddCallerSkip(skip int) Logger
 
 	Close() error
-	Sync() error
+	// Sync() error
 
 	WithContext(ctx context.Context, keyvals ...any) context.Context
 }
 
 type Field = zapcore.Field
+
+type Format string
+
+const (
+	FormatText Format = "text"
+	FormatJSON Format = "json"
+)

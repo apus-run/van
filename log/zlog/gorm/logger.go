@@ -23,15 +23,12 @@ func NewLogger(options ...Option) *Logger {
 	// 修改配置
 	config := Apply(options...)
 	z := zlog.NewLogger(zlog.WithOptions(func(zopts *zlog.Options) {
-		zopts.Encoding = config.Encoding
-		zopts.LogFilename = config.LogFilename
-		zopts.MaxSize = config.MaxSize
-		zopts.MaxBackups = config.MaxBackups
-		zopts.MaxAge = config.MaxAge
-		zopts.Compress = config.Compress
 		zopts.Mode = config.Mode
+		zopts.Writer = config.Writer
 		zopts.LogLevel = config.LogLevel
+		zopts.Format = config.Format
 	}))
+
 	return &Logger{
 		z,
 		config,

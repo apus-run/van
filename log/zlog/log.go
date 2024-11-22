@@ -2,12 +2,10 @@ package zlog
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const LOGGER_KEY = "zapLogger"
@@ -35,17 +33,13 @@ func ZapProdConfig() zap.Config {
 func NewLogger(opts ...Option) *ZapLogger {
 	options := Apply(opts...)
 
-	// 日志文件切割归档
-	// writerSyncer := getLogWriter(opts...)
-	writerSyncer := getLogConsoleWriter(options)
-
 	// 编码器配置
-	encoder := getEncoder(options.Encoding)
+	encoder := getEncoder(options)
 
 	// 日志级别
 	level := getLogLevel(options.LogLevel)
 
-	core := zapcore.NewCore(encoder, writerSyncer, level)
+	core := zapcore.NewCore(encoder, options.Writer, level)
 	if options.Mode != "prod" {
 		return &ZapLogger{
 			zap.New(core, zap.Development(), zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zap.ErrorLevel)),
@@ -56,10 +50,12 @@ func NewLogger(opts ...Option) *ZapLogger {
 	}
 }
 
-func getEncoder(encoding string) zapcore.Encoder {
-	if encoding == "console" {
+func getEncoder(options *Options) zapcore.Encoder {
+	var encoder zapcore.Encoder
+	switch f := options.Format; f {
+	case FormatText:
 		// NewConsoleEncoder 打印更符合人们观察的方式
-		return zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
+		encoder = zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
 			TimeKey:        "ts",
 			LevelKey:       "level",
 			NameKey:        "Logger",
@@ -72,7 +68,7 @@ func getEncoder(encoding string) zapcore.Encoder {
 			EncodeDuration: zapcore.SecondsDurationEncoder,
 			EncodeCaller:   zapcore.FullCallerEncoder,
 		})
-	} else {
+	case FormatJSON:
 		// 创建一个默认的 encoder 配置
 		encoderConfig := zap.NewProductionEncoderConfig()
 		// 自定义 MessageKey 为 message，message 语义更明确
@@ -89,39 +85,32 @@ func getEncoder(encoding string) zapcore.Encoder {
 		encoderConfig.EncodeDuration = func(d time.Duration, enc zapcore.PrimitiveArrayEncoder) {
 			enc.AppendFloat64(float64(d) / float64(time.Millisecond))
 		}
-		return zapcore.NewJSONEncoder(encoderConfig)
+		encoder = zapcore.NewJSONEncoder(encoderConfig)
+	default:
+		// NewConsoleEncoder 打印更符合人们观察的方式
+		encoder = zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
+			TimeKey:        "ts",
+			LevelKey:       "level",
+			NameKey:        "Logger",
+			CallerKey:      "caller",
+			MessageKey:     "msg",
+			StacktraceKey:  "stacktrace",
+			LineEnding:     zapcore.DefaultLineEnding,
+			EncodeLevel:    zapcore.CapitalColorLevelEncoder, // 在日志文件中使用大写字母记录日志级别
+			EncodeTime:     zapcore.ISO8601TimeEncoder,
+			EncodeDuration: zapcore.SecondsDurationEncoder,
+			EncodeCaller:   zapcore.FullCallerEncoder,
+		})
 	}
+
+	return encoder
+
 }
 
 // 自定义时间编码器
 func timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	//enc.AppendString(t.Format("2006-01-02 15:04:05"))
 	enc.AppendString(t.Format("2006-01-02 15:04:05.000000000"))
-}
-
-func getLogWriter(opts *Options) zapcore.WriteSyncer {
-	lumberJackLogger := &lumberjack.Logger{
-		Filename:   opts.LogFilename,
-		MaxSize:    opts.MaxSize, // megabytes
-		MaxBackups: opts.MaxBackups,
-		MaxAge:     opts.MaxAge, //days
-		Compress:   opts.Compress,
-	}
-	return zapcore.AddSync(lumberJackLogger)
-}
-
-func getLogConsoleWriter(opts *Options) zapcore.WriteSyncer {
-	// 日志文件切割归档
-	lumberJackLogger := &lumberjack.Logger{
-		Filename:   opts.LogFilename,
-		MaxSize:    opts.MaxSize, // megabytes
-		MaxBackups: opts.MaxBackups,
-		MaxAge:     opts.MaxAge, //days
-		Compress:   opts.Compress,
-	}
-
-	// 打印到控制台和文件
-	return zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(lumberJackLogger))
 }
 
 func getLogLevel(logLevel string) zapcore.Level {
@@ -200,10 +189,6 @@ func (l *ZapLogger) Print(args ...any) {
 
 func (l *ZapLogger) Printf(format string, args ...any) {
 	l.Logger.Sugar().Infof(format, args...)
-}
-
-func (l *ZapLogger) Println(args ...any) {
-	l.Logger.Info(fmt.Sprintln(args...))
 }
 
 func (l *ZapLogger) Close() error {

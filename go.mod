@@ -1,6 +1,6 @@
 module github.com/apus-run/van
 
-go 1.22
+go 1.23
 
 replace github.com/ugorji/go => github.com/ugorji/go v1.2.12
 

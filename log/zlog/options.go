@@ -1,34 +1,30 @@
 package zlog
 
+import (
+	"io"
+	"os"
+
+	"go.uber.org/zap/zapcore"
+)
+
 // Option is config option.
 type Option func(*Options)
 
 type Options struct {
 	// logger options
-	Mode     string // dev or prod
-	LogLevel string // debug, info, warn, error, panic, panic, fatal
-	Encoding string // console or json
-
-	// lumberjack options
-	LogFilename string
-	MaxSize     int
-	MaxBackups  int
-	MaxAge      int
-	Compress    bool
+	Mode     string              // dev or prod
+	Writer   zapcore.WriteSyncer // 日志输出
+	LogLevel string              // debug, info, warn, error, panic, panic, fatal
+	Format   Format              // text or json
 }
 
 // DefaultOptions .
 func DefaultOptions() *Options {
 	return &Options{
 		Mode:     "dev",
+		Writer:   zapcore.AddSync(os.Stdout),
 		LogLevel: "info",
-		Encoding: "console",
-
-		LogFilename: "logs.log",
-		MaxSize:     500, // megabytes
-		MaxBackups:  3,
-		MaxAge:      28, //days
-		Compress:    true,
+		Format:   FormatText,
 	}
 }
 
@@ -54,45 +50,28 @@ func WithLogLevel(level string) Option {
 	}
 }
 
-// WithEncoding 日志编码
-func WithEncoding(encoding string) Option {
+// WithFormat 日志格式
+func WithFormat(format Format) Option {
 	return func(o *Options) {
-		o.Encoding = encoding
+		o.Format = format
 	}
 }
 
-// WithFilename 日志文件路径，建议 /logs/log.log，如果为空则不输出日志到文件
-func WithFilename(filename string) Option {
+// WithWriter 日志输出
+func WithWriter(writer io.Writer) Option {
 	return func(o *Options) {
-		o.LogFilename = filename
+		o.Writer = zapcore.AddSync(writer)
 	}
 }
 
-// WithMaxSize 日志文件大小
-func WithMaxSize(maxSize int) Option {
+// WithWriters 日志输出
+func WithWriters(writers ...io.Writer) Option {
 	return func(o *Options) {
-		o.MaxSize = maxSize
-	}
-}
-
-// WithMaxBackups 日志文件最大备份数, 保留日志文件最大的数量，为 0 是保留所有旧的日志文件
-func WithMaxBackups(maxBackups int) Option {
-	return func(o *Options) {
-		o.MaxBackups = maxBackups
-	}
-}
-
-// WithMaxAge 日志文件最大保存时间
-func WithMaxAge(maxAge int) Option {
-	return func(o *Options) {
-		o.MaxAge = maxAge
-	}
-}
-
-// WithCompress 日志文件是否压缩
-func WithCompress(compress bool) Option {
-	return func(o *Options) {
-		o.Compress = compress
+		wrs := make([]zapcore.WriteSyncer, 0, len(writers))
+		for _, w := range writers {
+			wrs = append(wrs, zapcore.AddSync(w))
+		}
+		o.Writer = zapcore.NewMultiWriteSyncer(wrs...)
 	}
 }
 

@@ -2,29 +2,30 @@ package slog
 
 import (
 	"context"
-	"log/slog"
 )
 
 type ContextLogKey struct{}
 
-func NewContext(ctx context.Context, l *slog.Logger) context.Context {
+func NewContext(ctx context.Context, l *SlogLogger) context.Context {
 	return context.WithValue(ctx, ContextLogKey{}, l)
 }
 
-func WithContext(ctx context.Context, l *slog.Logger) context.Context {
-	if _, ok := ctx.Value(ContextLogKey{}).(*slog.Logger); ok {
+func WithContext(ctx context.Context, l *SlogLogger) context.Context {
+	if _, ok := ctx.Value(ContextLogKey{}).(*SlogLogger); ok {
 		return ctx
 	}
 	return context.WithValue(ctx, ContextLogKey{}, l)
 }
 
-func FromContext(ctx context.Context) *slog.Logger {
-	if l, ok := ctx.Value(ContextLogKey{}).(*slog.Logger); ok {
+func FromContext(ctx context.Context) *SlogLogger {
+	if l, ok := ctx.Value(ContextLogKey{}).(*SlogLogger); ok {
 		return l
 	}
-	return slog.Default()
+	return nil
 }
 
-//func log(ctx context.Context, level slog.Level, msg string, args ...any) {
-//	FromContext(ctx).Log(ctx, level, msg, args...)
-//}
+// C represents for `FromContext` with empty keyvals.
+// slog.C(ctx).Info("Set function called")
+func C(ctx context.Context) *SlogLogger {
+	return FromContext(ctx)
+}

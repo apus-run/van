@@ -1,36 +1,29 @@
 package slog
 
-import "log/slog"
+import (
+	"io"
+	"log/slog"
+	"os"
+)
 
 // Option is config option.
 type Option func(*Options)
 
 type Options struct {
 	// logger options
-	LogLevel string // debug, info, warn, error
-	Encoding string // console or json
-	LogGroup string // slog group
-	LogAttrs []slog.Attr
-
-	// lumberjack options
-	LogFilename string
-	MaxSize     int
-	MaxBackups  int
-	MaxAge      int
-	Compress    bool
+	LogLevel string      // debug, info, warn, error,debug, panic
+	Format   Format      // text or json
+	Writer   io.Writer   // 日志输出
+	LogGroup string      // slog group
+	LogAttrs []slog.Attr // 日志属性
 }
 
 // DefaultOptions .
 func DefaultOptions() *Options {
 	return &Options{
 		LogLevel: "info",
-		Encoding: "console",
-
-		LogFilename: "logs.log",
-		MaxSize:     500, // megabytes
-		MaxBackups:  3,
-		MaxAge:      28, //days
-		Compress:    true,
+		Format:   FormatText,
+		Writer:   os.Stdout,
 	}
 }
 
@@ -57,50 +50,29 @@ func WithLogGroup(group string) Option {
 }
 
 // WithLogAttrs 日志属性
-func WithLogAttrs(attrs []slog.Attr) Option {
+func WithLogAttrs(attrs []Attr) Option {
 	return func(o *Options) {
 		o.LogAttrs = attrs
 	}
 }
 
-// WithEncoding 日志编码
-func WithEncoding(encoding string) Option {
+// WithFormat 日志格式
+func WithFormat(format Format) Option {
 	return func(o *Options) {
-		o.Encoding = encoding
+		o.Format = format
 	}
 }
 
-// WithFilename 日志文件
-func WithFilename(filename string) Option {
+// WithWriter 日志输出
+func WithWriter(writer io.Writer) Option {
 	return func(o *Options) {
-		o.LogFilename = filename
+		o.Writer = writer
 	}
 }
 
-// WithMaxSize 日志文件大小
-func WithMaxSize(maxSize int) Option {
-	return func(o *Options) {
-		o.MaxSize = maxSize
-	}
-}
-
-// WithMaxBackups 日志文件最大备份数
-func WithMaxBackups(maxBackups int) Option {
-	return func(o *Options) {
-		o.MaxBackups = maxBackups
-	}
-}
-
-// WithMaxAge 日志文件最大保存时间
-func WithMaxAge(maxAge int) Option {
-	return func(o *Options) {
-		o.MaxAge = maxAge
-	}
-}
-
-// WithCompress 日志文件是否压缩
-func WithCompress(compress bool) Option {
-	return func(o *Options) {
-		o.Compress = compress
+// WithOptions 设置所有配置
+func WithOptions(fn func(options *Options)) Option {
+	return func(options *Options) {
+		fn(options)
 	}
 }

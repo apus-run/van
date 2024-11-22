@@ -3,7 +3,7 @@ package gorm
 import (
 	"time"
 
-	"github.com/apus-run/van/log/zlog"
+	log "github.com/apus-run/van/log/slog"
 )
 
 // Config is logger config
@@ -12,8 +12,7 @@ type Config struct {
 	IgnoreRecordNotFoundError bool
 	LogInfo                   bool
 
-	// 集成 zlog 配置
-	*zlog.Options
+	*log.Options
 }
 
 type Option func(*Config)
@@ -23,7 +22,7 @@ func DefaultDBConfig() *Config {
 		SlowThreshold:             time.Second * 2,
 		IgnoreRecordNotFoundError: true,
 		LogInfo:                   true,
-		Options:                   zlog.DefaultOptions(),
+		Options:                   log.DefaultOptions(),
 	}
 }
 
@@ -35,32 +34,36 @@ func Apply(opts ...Option) *Config {
 	return config
 }
 
+// WithSlowThreshold set slow threshold
 func WithSlowThreshold(threshold time.Duration) Option {
-	return func(config *Config) {
-		config.SlowThreshold = threshold
+	return func(c *Config) {
+		c.SlowThreshold = threshold
 	}
 }
+
+// WithIgnoreRecordNotFoundError ignore record not found error
 func WithIgnoreRecordNotFoundError() Option {
-	return func(config *Config) {
-		config.IgnoreRecordNotFoundError = true
+	return func(c *Config) {
+		c.IgnoreRecordNotFoundError = true
 	}
 }
 
+// WithLogInfo set log info
 func WithLogInfo(logInfo bool) Option {
-	return func(config *Config) {
-		config.LogInfo = logInfo
+	return func(c *Config) {
+		c.LogInfo = logInfo
 	}
 }
 
-// WithConfig 设置所有配置
+// WithConfig set all config
 func WithConfig(fn func(config *Config)) Option {
 	return func(config *Config) {
 		fn(config)
 	}
 }
 
-// WithZlogOptions 设置 zlog.Options
-func WithZlogOptions(options *zlog.Options) Option {
+// WithSlogOptions 设置 slog.Options
+func WithSlogOptions(options *log.Options) Option {
 	return func(conf *Config) {
 		conf.Options = options
 	}
