@@ -17,7 +17,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	server "github.com/apus-run/van/server/http"
+	"github.com/apus-run/van/server"
+	httpServer "github.com/apus-run/van/server/http"
 )
 
 func TestNewServer(t *testing.T) {
@@ -26,7 +27,7 @@ func TestNewServer(t *testing.T) {
 		c.String(http.StatusOK, "OK")
 	})
 
-	srv := server.NewServer(g, server.WithAddr(":8080"))
+	srv := httpServer.NewServer(server.WithHandler(g), server.WithAddress(":8080"))
 
 	// wsManager := ws.New()
 	// wsUpgrader := ws.NewWSUpgrader(
@@ -63,7 +64,7 @@ func TestServer(t *testing.T) {
 		c.String(http.StatusOK, "OK")
 	})
 
-	srv := server.NewServer(g, server.WithAddr(":8080"))
+	srv := httpServer.NewServer(server.WithHandler(g), server.WithAddress(":8080"))
 
 	// Create a done channel to signal when the shutdown is complete
 	done := make(chan bool, 1)
@@ -83,7 +84,7 @@ func TestServer(t *testing.T) {
 	t.Logf("Graceful shutdown complete.")
 }
 
-func gracefulShutdown(srv *server.Server, done chan bool) {
+func gracefulShutdown(srv server.Server, done chan bool) {
 	// graceful shutdown
 	exitSignals := []os.Signal{
 		syscall.SIGINT,
@@ -129,7 +130,7 @@ func TestServerWG(t *testing.T) {
 		c.String(http.StatusOK, "OK")
 	})
 
-	srv := server.NewServer(g, server.WithAddr(":8080"))
+	srv := httpServer.NewServer(server.WithHandler(g), server.WithAddress(":8080"))
 
 	// graceful shutdown
 	exitSignals := []os.Signal{

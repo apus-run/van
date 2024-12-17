@@ -8,23 +8,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/apus-run/van/server"
 )
 
 func TestNewServer(t *testing.T) {
 	addr := "0.0.0.0:9090"
-	grpcServer := grpc.NewServer()
-	server := NewServer(grpcServer, WithAddr(addr))
+	server := NewServer(server.WithAddress(addr))
 
 	go func() {
-		ctx, cancelFunc := context.WithTimeout(context.TODO(), time.Second*3)
+		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*3)
 		defer cancelFunc()
 
-		_, err := grpc.DialContext(
-			ctx,
-			"127.0.0.1:9090",
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithBlock(),
-		)
+		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			panic(err)
+		}
+		defer conn.Close()
+
 		assert.NoError(t, err)
 
 		time.Sleep(1 * time.Second)

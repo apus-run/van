@@ -7,11 +7,8 @@ import (
 
 // Server is transport server.
 type Server interface {
-	Start(context.Context) error
-	Stop(context.Context) error
-}
-
-// Endpointer is registry endpoint.
-type Endpointer interface {
+	Start(ctx context.Context) error
+	Stop(ctx context.Context) error
+	Health() bool
 	Endpoint() (*url.URL, error)
 }
