@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/apus-run/van/registry"
 	"github.com/apus-run/van/server"
-	"github.com/apus-run/van/server/registry"
 )
 
 // Option is an application option.

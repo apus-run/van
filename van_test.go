@@ -9,9 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apus-run/van/registry"
+	"github.com/apus-run/van/server"
 	"github.com/apus-run/van/server/grpc"
 	"github.com/apus-run/van/server/http"
-	"github.com/apus-run/van/server/registry"
+	"github.com/gin-gonic/gin"
 )
 
 type mockRegistry struct {
@@ -292,4 +294,32 @@ func TestApp_Context(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_App_Service(t *testing.T) {
+	// gin server
+	e := gin.New()
+	e.GET("/hello", func(c *gin.Context) {
+		c.String(200, "hello world")
+	})
+	e.Use(func(c *gin.Context) {
+		c.Writer.WriteString("gin middleware")
+	})
+	e.GET("/panic", func(c *gin.Context) {
+		panic("panic error")
+	})
+
+	srv := http.NewServer(
+		server.WithAddress(":9000"),
+		server.WithHandler(e),
+	)
+	service := New(
+		WithName("gin-http"),
+		WithServer(srv),
+	)
+
+	if err := service.Run(); err != nil {
+		t.Fatal(err)
+	}
+
 }

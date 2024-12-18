@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/apus-run/van/server/registry"
+	"github.com/apus-run/van/registry"
 )
 
 // Service is an application components lifecycle manager.
