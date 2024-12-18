@@ -2,11 +2,15 @@ package ws
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,5 +148,109 @@ func dereference(v interface{}) interface{} {
 		return *v
 	default:
 		return v
+	}
+}
+
+func Test_NewWServer(t *testing.T) {
+	r := gin.Default()
+	wsManager := New()
+
+	// WebSocket 路由
+	r.GET("/ws", func(c *gin.Context) {
+		conn, err := wsManager.WebSocketUpgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			t.Logf("Error during connection upgrade: %v", err)
+			c.String(http.StatusInternalServerError, "Could not upgrade connection")
+			return
+		}
+
+		connID := "some_unique_id"
+		// Add the connection to the hub
+		connection := &Connection{Conn: conn}
+		wsManager.AddWebsocketConnection(connID, connection)
+
+		defer wsManager.CloseConnection(connID)
+
+		for {
+			var msg string
+			err := connection.Bind(&msg)
+			if err != nil {
+				t.Logf("Error reading message: %v", err)
+				break
+			}
+			t.Logf("Received message: %s", msg)
+
+			// 发送响应
+			message, err := serializeMessage(msg)
+			if err != nil {
+				t.Logf("Error serializing response: %v", err)
+				continue
+			}
+			err = connection.WriteMessage(TextMessage, message)
+			if err != nil {
+				t.Logf("Error writing response: %v", err)
+				break
+			}
+		}
+	})
+
+	t.Log("WebSocket server started at :8080")
+	if err := r.Run(":8080"); err != nil {
+		t.Fatal("ListenAndServe:", err)
+	}
+}
+
+var ErrMarshalingResponse = errors.New("error marshaling response")
+
+func serializeMessage(response any) ([]byte, error) {
+	var (
+		message []byte
+		err     error
+	)
+
+	switch v := response.(type) {
+	case string:
+		message = []byte(v)
+	case []byte:
+		message = v
+	default:
+		message, err = json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrMarshalingResponse, err)
+		}
+	}
+
+	return message, nil
+}
+
+func Test_WsCline(t *testing.T) {
+	// 连接到 WebSocket 服务器
+	url := "ws://localhost:8080/ws"
+	dialer := websocket.DefaultDialer
+	conn, resp, err := dialer.Dial(url, nil)
+	if err != nil {
+		t.Fatal("Dial error:", err)
+	}
+	defer conn.Close()
+	defer resp.Body.Close()
+
+	// 发送消息
+	err = conn.WriteMessage(websocket.TextMessage, []byte("Hello, Server!"))
+	if err != nil {
+		t.Log("Write error:", err)
+		return
+	}
+
+	// 接收消息
+	for {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			t.Log("Read error:", err)
+			break
+		}
+		t.Logf("Received message: %s", msg)
+
+		// 等待一段时间再发送下一条消息
+		time.Sleep(1 * time.Second)
 	}
 }
