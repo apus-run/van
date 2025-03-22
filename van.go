@@ -135,7 +135,9 @@ func (s *Service) Run() error {
 func (s *Service) Stop() (err error) {
 	sctx := NewContext(s.ctx, s)
 	for _, fn := range s.options.beforeStop {
-		err = fn(sctx)
+		if err = fn(sctx); err != nil {
+			return err
+		}
 	}
 
 	s.mu.Lock()

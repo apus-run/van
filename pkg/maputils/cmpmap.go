@@ -1,4 +1,4 @@
-package maputil
+package maputils
 
 ///
 // CmpMap is a version of syncmap, which compares the values before inserting.

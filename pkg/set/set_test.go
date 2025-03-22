@@ -1,145 +1,388 @@
 package set
 
 import (
-	"slices"
-	"sort"
+	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func assertSetContainsExactly(t *testing.T, set StringSet, elements ...string) {
-	a := assert.New(t)
-	for _, elem := range elements {
-		a.True(set.Contains(elem))
+func TestStringSetHasAll(t *testing.T) {
+	s := New[string]()
+	s2 := New[string]()
+	if len(s) != 0 {
+		t.Errorf("Expected len=0: %d", len(s))
 	}
-	a.Equal(len(elements), set.Cardinality())
-	a.Equal(len(elements) == 0, set.IsEmpty())
+	s.Insert("a", "b")
+	if len(s) != 2 {
+		t.Errorf("Expected len=2: %d", len(s))
+	}
+	s.Insert("c")
+	if s.Has("d") {
+		t.Errorf("Unexpected contents: %#v", s)
+	}
+	if !s.Has("a") {
+		t.Errorf("Missing contents: %#v", s)
+	}
+	s.Delete("a")
+	if s.Has("a") {
+		t.Errorf("Unexpected contents: %#v", s)
+	}
+	s.Insert("a")
+	if s.HasAll("a", "b", "d") {
+		t.Errorf("Unexpected contents: %#v", s)
+	}
+	if !s.HasAll("a", "b") {
+		t.Errorf("Missing contents: %#v", s)
+	}
+	s2.Insert("a", "b", "d")
+	if s.IsSuperset(s2) {
+		t.Errorf("Unexpected contents: %#v", s)
+	}
+	s2.Delete("d")
+	if !s.IsSuperset(s2) {
+		t.Errorf("Missing contents: %#v", s)
+	}
+}
 
-	falseCases := []string{"BLAH", "blah", "BLACK", "SheeP"}
-	for _, elem := range falseCases {
-		if slices.Index(falseCases, elem) == -1 {
-			a.False(set.Contains(elem))
+func TestTypeInference(t *testing.T) {
+	s := New("a", "b", "c")
+	if len(s) != 3 {
+		t.Errorf("Expected len=3: %d", len(s))
+	}
+}
+
+func TestStringSetDeleteMultiples(t *testing.T) {
+	s := New[string]()
+	s.Insert("a", "b", "c")
+	if len(s) != 3 {
+		t.Errorf("Expected len=3: %d", len(s))
+	}
+
+	s.Delete("a", "c")
+	if len(s) != 1 {
+		t.Errorf("Expected len=1: %d", len(s))
+	}
+	if s.Has("a") {
+		t.Errorf("Unexpected contents: %#v", s)
+	}
+	if s.Has("c") {
+		t.Errorf("Unexpected contents: %#v", s)
+	}
+	if !s.Has("b") {
+		t.Errorf("Missing contents: %#v", s)
+	}
+}
+
+func TestNewStringSetWithMultipleStrings(t *testing.T) {
+	s := New[string]("a", "b", "c")
+	if len(s) != 3 {
+		t.Errorf("Expected len=3: %d", len(s))
+	}
+	if !s.Has("a") || !s.Has("b") || !s.Has("c") {
+		t.Errorf("Unexpected contents: %#v", s)
+	}
+}
+
+func TestStringSetSortedList(t *testing.T) {
+	s := New[string]("z", "y", "x", "a")
+	if !reflect.DeepEqual(s.SortedList(), []string{"a", "x", "y", "z"}) {
+		t.Errorf("SortedList gave unexpected result: %#v", s.SortedList())
+	}
+}
+
+func TestStringSetUnsortedList(t *testing.T) {
+	s := New[string]("z", "y", "x", "a")
+	ul := s.UnsortedList()
+	if len(ul) != 4 || !s.Has("z") || !s.Has("y") || !s.Has("x") || !s.Has("a") {
+		t.Errorf("UnsortedList gave unexpected result: %#v", s.UnsortedList())
+	}
+}
+
+func TestStringSetDifference(t *testing.T) {
+	a := New[string]("1", "2", "3")
+	b := New[string]("1", "2", "4", "5")
+	c := a.Difference(b)
+	d := b.Difference(a)
+	if len(c) != 1 {
+		t.Errorf("Expected len=1: %d", len(c))
+	}
+	if !c.Has("3") {
+		t.Errorf("Unexpected contents: %#v", c.SortedList())
+	}
+	if len(d) != 2 {
+		t.Errorf("Expected len=2: %d", len(d))
+	}
+	if !d.Has("4") || !d.Has("5") {
+		t.Errorf("Unexpected contents: %#v", d.SortedList())
+	}
+}
+
+func TestStringSetHasAny(t *testing.T) {
+	a := New[string]("1", "2", "3")
+
+	if !a.HasAny("1", "4") {
+		t.Errorf("expected true, got false")
+	}
+
+	if a.HasAny("0", "4") {
+		t.Errorf("expected false, got true")
+	}
+}
+
+func TestStringSetEquals(t *testing.T) {
+	// Simple case (order doesn't matter)
+	a := New[string]("1", "2")
+	b := New[string]("2", "1")
+	if !a.Equal(b) {
+		t.Errorf("Expected to be equal: %v vs %v", a, b)
+	}
+	a = New[string]("1", "2", "3")
+	b = New[string]("2", "1")
+	if a.Equal(b) {
+		t.Errorf("Expected to be not-equal: %v vs %v", a, b)
+	}
+	// It is a set; duplicates are ignored
+	a = New[string]("1", "2")
+	b = New[string]("2", "2", "1")
+	if !a.Equal(b) {
+		t.Errorf("Expected to be equal: %v vs %v", a, b)
+	}
+	// Edge cases around empty sets / empty strings
+	a = New[string]()
+	b = New[string]()
+	if !a.Equal(b) {
+		t.Errorf("Expected to be equal: %v vs %v", a, b)
+	}
+
+	b = New[string]("1", "2", "3")
+	if a.Equal(b) {
+		t.Errorf("Expected to be not-equal: %v vs %v", a, b)
+	}
+	if b.Equal(a) {
+		t.Errorf("Expected to be not-equal: %v vs %v", b, a)
+	}
+
+	b = New[string]("1", "2", "")
+	if a.Equal(b) {
+		t.Errorf("Expected to be not-equal: %v vs %v", a, b)
+	}
+	if b.Equal(a) {
+		t.Errorf("Expected to be not-equal: %v vs %v", b, a)
+	}
+
+	// Check for equality after mutation
+	a = New[string]()
+	a.Insert("1")
+	if a.Equal(b) {
+		t.Errorf("Expected to be not-equal: %v vs %v", a, b)
+	}
+
+	a.Insert("2")
+	if a.Equal(b) {
+		t.Errorf("Expected to be not-equal: %v vs %v", a, b)
+	}
+
+	a.Insert("")
+	if !a.Equal(b) {
+		t.Errorf("Expected to be equal: %v vs %v", a, b)
+	}
+
+	a.Delete("")
+	if a.Equal(b) {
+		t.Errorf("Expected to be not-equal: %v vs %v", a, b)
+	}
+}
+
+func TestStringUnion(t *testing.T) {
+	tests := []struct {
+		s1       Set[string]
+		s2       Set[string]
+		expected Set[string]
+	}{
+		{
+			New[string]("1", "2", "3", "4"),
+			New[string]("3", "4", "5", "6"),
+			New[string]("1", "2", "3", "4", "5", "6"),
+		},
+		{
+			New[string]("1", "2", "3", "4"),
+			New[string](),
+			New[string]("1", "2", "3", "4"),
+		},
+		{
+			New[string](),
+			New[string]("1", "2", "3", "4"),
+			New[string]("1", "2", "3", "4"),
+		},
+		{
+			New[string](),
+			New[string](),
+			New[string](),
+		},
+	}
+
+	for _, test := range tests {
+		union := test.s1.Union(test.s2)
+		if union.Len() != test.expected.Len() {
+			t.Errorf("Expected union.Len()=%d but got %d", test.expected.Len(), union.Len())
+		}
+
+		if !union.Equal(test.expected) {
+			t.Errorf("Expected union.Equal(expected) but not true.  union:%v expected:%v", union.SortedList(), test.expected.SortedList())
 		}
 	}
-	a.ElementsMatch(set.AsSlice(), elements)
-
-	slices.Sort(elements)
-	a.Equal(elements, set.AsSortedSlice(func(i, j string) bool {
-		return i < j
-	}))
-
-	sort.Slice(elements, func(i, j int) bool {
-		return elements[i] > elements[j]
-	})
-	a.Equal(elements, set.AsSortedSlice(func(i, j string) bool {
-		return i > j
-	}))
 }
 
-func TestAddMatching(t *testing.T) {
-	a := assert.New(t)
+func TestStringIntersection(t *testing.T) {
+	tests := []struct {
+		s1       Set[string]
+		s2       Set[string]
+		expected Set[string]
+	}{
+		{
+			New[string]("1", "2", "3", "4"),
+			New[string]("3", "4", "5", "6"),
+			New[string]("3", "4"),
+		},
+		{
+			New[string]("1", "2", "3", "4"),
+			New[string]("1", "2", "3", "4"),
+			New[string]("1", "2", "3", "4"),
+		},
+		{
+			New[string]("1", "2", "3", "4"),
+			New[string](),
+			New[string](),
+		},
+		{
+			New[string](),
+			New[string]("1", "2", "3", "4"),
+			New[string](),
+		},
+		{
+			New[string](),
+			New[string](),
+			New[string](),
+		},
+	}
 
-	var set StringSet
-	a.False(set.AddMatching(func(s string) bool {
-		return s == "matching"
-	}, "1", "2"))
-	a.Nil(set)
+	for _, test := range tests {
+		intersection := test.s1.Intersection(test.s2)
+		if intersection.Len() != test.expected.Len() {
+			t.Errorf("Expected intersection.Len()=%d but got %d", test.expected.Len(), intersection.Len())
+		}
 
-	a.True(set.AddMatching(func(s string) bool {
-		return s != ""
-	}, "1", "2"))
-	a.NotNil(set)
-	a.ElementsMatch([]string{"1", "2"}, set.AsSlice())
-
-	a.False(set.AddMatching(func(s string) bool {
-		return s != ""
-	}, "1", "2"))
-	a.NotNil(set)
-	a.ElementsMatch([]string{"1", "2"}, set.AsSlice())
+		if !intersection.Equal(test.expected) {
+			t.Errorf("Expected intersection.Equal(expected) but not true.  intersection:%v expected:%v", intersection.SortedList(), test.expected.SortedList())
+		}
+	}
 }
 
-func TestStringSet(t *testing.T) {
-	elements := []string{"a", "bcd"}
-	set := NewSet(elements[0])
-	assertSetContainsExactly(t, set, elements[0])
-	assert.Equal(t, elements[0], set.GetArbitraryElem())
-	set.AddAll(elements[1:]...)
-	assertSetContainsExactly(t, set, elements...)
-
-	assert.True(t, set.Add("foo"))
-	assert.False(t, set.Add("bcd"))
-	assert.True(t, set.AddAll("bar", "baz"))
-
-	assertSetContainsExactly(t, set, "a", "bcd", "foo", "bar", "baz")
-
-	assert.True(t, set.Remove("a"))
-	assert.False(t, set.Remove("b"))
-	assert.True(t, set.RemoveAll("bcd", "qux"))
-
-	assertSetContainsExactly(t, set, "foo", "bar", "baz")
-
-	emptyFS := NewSet[string]()
-	assertSetContainsExactly(t, emptyFS)
-	assert.Equal(t, "", emptyFS.GetArbitraryElem())
+func TestKeySet(t *testing.T) {
+	m := map[string]string{
+		"hallo":   "world",
+		"goodbye": "and goodnight",
+	}
+	expected := []string{"goodbye", "hallo"}
+	gotList := KeySet(m).SortedList() // List() returns a sorted list
+	if len(gotList) != len(m) {
+		t.Fatalf("got %v elements, wanted %v", len(gotList), len(m))
+	}
+	for i, entry := range KeySet(m).SortedList() {
+		if entry != expected[i] {
+			t.Errorf("got %v, expected %v", entry, expected[i])
+		}
+	}
 }
 
-func TestUnion(t *testing.T) {
-	a := NewSet("a", "b", "c")
-	b := NewSet("b", "c", "d")
-	aPlusB := a.Union(b)
-
-	assertSetContainsExactly(t, aPlusB, "a", "b", "c", "d")
-
-	emptyPlusA := StringSet{}.Union(a)
-	assertSetContainsExactly(t, emptyPlusA, a.AsSlice()...)
-	aPlusEmpty := a.Union(StringSet{})
-	assertSetContainsExactly(t, aPlusEmpty, a.AsSlice()...)
-
-	// Test for no aliasing
-	assert.True(t, emptyPlusA.Add("f"))
-	assert.True(t, aPlusEmpty.Add("f"))
-
-	assertSetContainsExactly(t, a, "a", "b", "c")
+func TestSetSymmetricDifference(t *testing.T) {
+	a := New("1", "2", "3")
+	b := New("1", "2", "4", "5")
+	c := a.SymmetricDifference(b)
+	d := b.SymmetricDifference(a)
+	if !c.Equal(New("3", "4", "5")) {
+		t.Errorf("Unexpected contents: %#v", c.SortedList())
+	}
+	if !d.Equal(New("3", "4", "5")) {
+		t.Errorf("Unexpected contents: %#v", d.SortedList())
+	}
 }
 
-func TestIntersection(t *testing.T) {
-	a := NewSet("a", "b", "c")
-	b := NewSet("b", "c", "d")
-	aAndB := a.Intersect(b)
+func TestSetClear(t *testing.T) {
+	s := New[string]()
+	s.Insert("a", "b", "c")
+	if s.Len() != 3 {
+		t.Errorf("Expected len=3: %d", s.Len())
+	}
 
-	assertSetContainsExactly(t, aAndB, "b", "c")
-	assert.True(t, a.Intersects(b))
-
-	emptyAndA := StringSet{}.Intersect(a)
-	assertSetContainsExactly(t, emptyAndA)
-	assert.False(t, StringSet{}.Intersects(a))
-	aAndEmpty := a.Intersect(StringSet{})
-	assertSetContainsExactly(t, aAndEmpty)
-	assert.False(t, a.Intersects(StringSet{}))
-
-	// Test for no aliasing
-	assert.True(t, emptyAndA.Add("f"))
-	assert.True(t, aAndEmpty.Add("f"))
-
-	assertSetContainsExactly(t, a, "a", "b", "c")
+	s.Clear()
+	if s.Len() != 0 {
+		t.Errorf("Expected len=0: %d", s.Len())
+	}
 }
 
-func TestDifference(t *testing.T) {
-	a := NewSet("a", "b", "c")
-	b := NewSet("b", "c", "d")
-	aMinusB := a.Difference(b)
+func TestSetClearWithSharedReference(t *testing.T) {
+	s := New[string]()
+	s.Insert("a", "b", "c")
+	if s.Len() != 3 {
+		t.Errorf("Expected len=3: %d", s.Len())
+	}
 
-	assertSetContainsExactly(t, aMinusB, "a")
+	m := s
+	s.Clear()
+	if s.Len() != 0 {
+		t.Errorf("Expected len=0 on the cleared set: %d", s.Len())
+	}
+	if m.Len() != 0 {
+		t.Errorf("Expected len=0 on the shared reference: %d", m.Len())
+	}
+}
 
-	emptyMinusA := StringSet{}.Difference(a)
-	assertSetContainsExactly(t, emptyMinusA)
-	aMinusEmpty := a.Difference(StringSet{})
-	assertSetContainsExactly(t, aMinusEmpty, a.AsSlice()...)
+func TestSetClearInSeparateFunction(t *testing.T) {
+	s := New[string]()
+	s.Insert("a", "b", "c")
+	if s.Len() != 3 {
+		t.Errorf("Expected len=3: %d", s.Len())
+	}
 
-	// Test for no aliasing
-	assert.True(t, emptyMinusA.Add("f"))
-	assert.True(t, aMinusEmpty.Add("f"))
+	clearSetAndAdd(s, "d")
+	if s.Len() != 1 {
+		t.Errorf("Expected len=1: %d", s.Len())
+	}
+	if !s.Has("d") {
+		t.Errorf("Unexpected contents: %#v", s)
+	}
+}
 
-	assertSetContainsExactly(t, a, "a", "b", "c")
+func clearSetAndAdd[T ordered](s Set[T], a T) {
+	s.Clear()
+	s.Insert(a)
+}
+
+func TestPopAny(t *testing.T) {
+	a := New[string]("1", "2")
+	_, popped := a.PopAny()
+	if !popped {
+		t.Errorf("got len(%d): wanted 1", a.Len())
+	}
+	_, popped = a.PopAny()
+	if !popped {
+		t.Errorf("got len(%d): wanted 0", a.Len())
+	}
+	zeroVal, popped := a.PopAny()
+	if popped {
+		t.Errorf("got len(%d): wanted 0", a.Len())
+	}
+	if zeroVal != "" {
+		t.Errorf("should have gotten zero value when popping an empty set")
+	}
+}
+
+func TestClone(t *testing.T) {
+	a := New[string]("1", "2")
+	a.Insert("3")
+
+	got := a.Clone()
+	if !reflect.DeepEqual(got, a) {
+		t.Errorf("Expected to be equal: %v vs %v", got, a)
+	}
 }

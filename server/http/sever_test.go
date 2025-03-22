@@ -74,10 +74,13 @@ func TestServer(t *testing.T) {
 
 	// Start the server
 	err := srv.Start(ctx)
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		panic(fmt.Sprintf("http server error: %s", err))
+	if err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			t.Logf("Server closed: %v", err)
+		} else {
+			t.Fatalf("http server error: %s", err)
+		}
 	}
-
 	// Wait for the shutdown to be complete
 	<-done
 
