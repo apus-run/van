@@ -1,6 +1,7 @@
 package zlog
 
 import (
+	"context"
 	"sync"
 )
 
@@ -113,4 +114,12 @@ func With(fields ...Field) Logger {
 
 func AddCallerSkip(skip int) Logger {
 	return L().AddCallerSkip(skip)
+}
+
+func W(ctx context.Context) Logger {
+	return L().W(ctx)
+}
+
+func WC(ctx context.Context, contextExtractors map[string]func(context.Context) string) Logger {
+	return L().WC(ctx, contextExtractors)
 }

@@ -291,3 +291,27 @@ func (l *SlogLogger) clone() *SlogLogger {
 	copied := *l
 	return &copied
 }
+
+func (l *SlogLogger) W(ctx context.Context) Logger {
+	contextExtractors := map[string]func(context.Context) string{
+		"x-request-id": RequestIDFromContext, // 从 context 中提取请求 ID
+		"x-trace-id":   TraceIDFromContext,   // 从 context 中提取跟踪 ID
+		"x-span-id":    SpanIDFromContext,    // 从 context 中提取跨度 ID
+	}
+
+	return l.WC(ctx, contextExtractors)
+}
+
+// WC 解析传入的 context，尝试提取关注的键值，并添加到 zap.Logger 结构化日志中.
+func (l *SlogLogger) WC(ctx context.Context, contextExtractors map[string]func(context.Context) string) Logger {
+	lc := l.clone()
+
+	// 遍历映射，从 context 中提取值并添加到日志中。
+	for fieldName, extractor := range contextExtractors {
+		if val := extractor(ctx); val != "" {
+			lc.Logger = lc.Logger.With(slog.String(fieldName, val))
+		}
+	}
+
+	return lc
+}

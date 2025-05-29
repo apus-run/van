@@ -1,9 +1,6 @@
-{"level":"info","timestamp":"2024-11-22 17:13:34.482","caller":"zlog/log_test.go:28","message":"This is an info message","route":"/hello","port":""}
-{"level":"info","timestamp":"2024-11-22 17:13:34.482","caller":"zlog/log_test.go:29","message":"我是日志: {route 15 0 /hello <nil>}, {port 11 8090  <nil>}"}
-{"level":"error","timestamp":"2024-11-22 17:13:34.482","caller":"zlog/log_test.go:30","message":"This is an error message","stacktrace":"github.com/apus-run/van/log/zlog.TestLog\n\t/Users/moocss/work/GoProjects/van/log/zlog/log_test.go:30\ntesting.tRunner\n\t/usr/local/go/src/testing/testing.go:1690"}
-{"level":"info","timestamp":"2024-11-22 17:26:35.953","caller":"zlog/log_test.go:28","message":"This is an info message","route":"/hello","port":""}
-{"level":"info","timestamp":"2024-11-22 17:26:35.953","caller":"zlog/log_test.go:29","message":"我是日志: {route 15 0 /hello <nil>}, {port 11 8090  <nil>}"}
-{"level":"error","timestamp":"2024-11-22 17:26:35.953","caller":"zlog/log_test.go:30","message":"This is an error message","stacktrace":"github.com/apus-run/van/log/zlog.TestLog\n\t/Users/moocss/work/GoProjects/van/log/zlog/log_test.go:30\ntesting.tRunner\n\t/usr/local/go/src/testing/testing.go:1690"}
-{"level":"info","timestamp":"2024-11-22 17:28:52.293","caller":"zlog/log_test.go:28","message":"This is an info message","route":"/hello","port":""}
-{"level":"info","timestamp":"2024-11-22 17:28:52.293","caller":"zlog/log_test.go:29","message":"我是日志: {route 15 0 /hello <nil>}, {port 11 8090  <nil>}"}
-{"level":"error","timestamp":"2024-11-22 17:28:52.293","caller":"zlog/log_test.go:30","message":"This is an error message","stacktrace":"github.com/apus-run/van/log/zlog.TestLog\n\t/Users/moocss/work/GoProjects/van/log/zlog/log_test.go:30\ntesting.tRunner\n\t/usr/local/go/src/testing/testing.go:1690"}
+{"level":"info","timestamp":"2025-05-27 12:52:01.799","caller":"zlog/log_test.go:28","msg":"This is an info message","route":"/hello","port":""}
+{"level":"info","timestamp":"2025-05-27 12:52:01.800","caller":"zlog/log_test.go:29","msg":"我是日志: {route 15 0 /hello <nil>}, {port 11 8090  <nil>}"}
+{"level":"error","timestamp":"2025-05-27 12:52:01.800","caller":"zlog/log_test.go:30","msg":"This is an error message","stacktrace":"github.com/apus-run/van/log/zlog.TestLog\n\t/Users/moocss/work/GoProjects/van/log/zlog/log_test.go:30\ntesting.tRunner\n\t/usr/local/go/src/testing/testing.go:1792"}
+{"level":"info","timestamp":"2025-05-27 12:54:22.592","caller":"zlog/log_test.go:28","msg":"This is an info message","route":"/hello","port":""}
+{"level":"info","timestamp":"2025-05-27 12:54:22.592","caller":"zlog/log_test.go:29","msg":"我是日志: {route 15 0 /hello <nil>}, {port 11 8090  <nil>}"}
+{"level":"error","timestamp":"2025-05-27 12:54:22.592","caller":"zlog/log_test.go:30","msg":"This is an error message","stacktrace":"github.com/apus-run/van/log/zlog.TestLog\n\t/Users/moocss/work/GoProjects/van/log/zlog/log_test.go:30\ntesting.tRunner\n\t/usr/local/go/src/testing/testing.go:1792"}

@@ -56,16 +56,16 @@ func (l *Logger) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
 	return l
 }
 
-func (l *Logger) Info(ctx context.Context, msg string, keyvals ...any) {
-	l.Infof(infoStr+msg, append([]any{fileWithLineNum()}, keyvals...)...)
+func (l *Logger) Info(ctx context.Context, msg string, kvs ...any) {
+	l.Infof(infoStr+msg, append([]any{fileWithLineNum()}, kvs...)...)
 }
 
-func (l *Logger) Warn(ctx context.Context, msg string, keyvals ...any) {
-	l.Warnf(warnStr+msg, append([]any{fileWithLineNum()}, keyvals...)...)
+func (l *Logger) Warn(ctx context.Context, msg string, kvs ...any) {
+	l.Warnf(warnStr+msg, append([]any{fileWithLineNum()}, kvs...)...)
 }
 
-func (l *Logger) Error(ctx context.Context, msg string, keyvals ...any) {
-	l.Errorf(errStr+msg, append([]any{fileWithLineNum()}, keyvals...)...)
+func (l *Logger) Error(ctx context.Context, msg string, kvs ...any) {
+	l.Errorf(errStr+msg, append([]any{fileWithLineNum()}, kvs...)...)
 }
 
 func (l *Logger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {

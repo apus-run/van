@@ -32,7 +32,10 @@ type Logger interface {
 	AddCallerSkip(skip int) Logger
 
 	Close() error
-	// Sync() error
+	Sync() error
+
+	W(ctx context.Context) Logger
+	WC(ctx context.Context, contextExtractors map[string]func(context.Context) string) Logger
 
 	WithContext(ctx context.Context, keyvals ...any) context.Context
 }

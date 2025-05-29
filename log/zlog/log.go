@@ -1,6 +1,7 @@
 package zlog
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 )
 
 const LOGGER_KEY = "zapLogger"
+
+var _ Logger = (*ZapLogger)(nil)
 
 type ZapLogger struct {
 	*zap.Logger
@@ -40,87 +43,89 @@ func NewLogger(opts ...Option) *ZapLogger {
 	level := getLogLevel(options.LogLevel)
 
 	core := zapcore.NewCore(encoder, options.Writer, level)
-	if options.Mode != "prod" {
-		return &ZapLogger{
-			zap.New(core, zap.Development(), zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zap.ErrorLevel)),
-		}
-	}
+
 	return &ZapLogger{
-		zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zap.ErrorLevel)),
+		buildZapLogger(core, options.Mode),
 	}
+}
+
+// buildZapLogger 封装核心构建逻辑
+func buildZapLogger(core zapcore.Core, mode string) *zap.Logger {
+	baseOpts := []zap.Option{
+		zap.AddCaller(),
+		zap.AddCallerSkip(1), // 跳过封装层
+		zap.AddStacktrace(zap.ErrorLevel),
+	}
+
+	if mode != "prod" {
+		return zap.New(core, append(baseOpts, zap.Development())...)
+	}
+	return zap.New(core, baseOpts...)
 }
 
 func getEncoder(options *Options) zapcore.Encoder {
-	var encoder zapcore.Encoder
-	switch f := options.Format; f {
-	case FormatText:
-		// NewConsoleEncoder 打印更符合人们观察的方式
-		encoder = zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
-			TimeKey:        "ts",
-			LevelKey:       "level",
-			NameKey:        "Logger",
-			CallerKey:      "caller",
-			MessageKey:     "msg",
-			StacktraceKey:  "stacktrace",
-			LineEnding:     zapcore.DefaultLineEnding,
-			EncodeLevel:    zapcore.CapitalColorLevelEncoder, // 在日志文件中使用大写字母记录日志级别
-			EncodeTime:     zapcore.ISO8601TimeEncoder,
-			EncodeDuration: zapcore.SecondsDurationEncoder,
-			EncodeCaller:   zapcore.FullCallerEncoder,
-		})
+	// 根据不同的日志格式创建不同的编码器
+	switch options.Format {
 	case FormatJSON:
-		// 创建一个默认的 encoder 配置
-		encoderConfig := zap.NewProductionEncoderConfig()
-		// 自定义 MessageKey 为 message，message 语义更明确
-		encoderConfig.MessageKey = "message"
-		// 自定义 TimeKey 为 timestamp，timestamp 语义更明确
-		encoderConfig.TimeKey = "timestamp"
-		// encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-		// 指定时间序列化函数，将时间序列化为 `2006-01-02 15:04:05.000` 格式，更易读
-		encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-			enc.AppendString(t.Format("2006-01-02 15:04:05.000"))
-		}
-		// 指定 time.Duration 序列化函数，将 time.Duration 序列化为经过的毫秒数的浮点数
-		// 毫秒数比默认的秒数更精确
-		encoderConfig.EncodeDuration = func(d time.Duration, enc zapcore.PrimitiveArrayEncoder) {
-			enc.AppendFloat64(float64(d) / float64(time.Millisecond))
-		}
-		encoder = zapcore.NewJSONEncoder(encoderConfig)
+		return zapcore.NewJSONEncoder(getJSONEncoderConfig())
+	case FormatText:
+		return zapcore.NewConsoleEncoder(getConsoleEncoderConfig())
 	default:
-		// NewConsoleEncoder 打印更符合人们观察的方式
-		encoder = zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
-			TimeKey:        "ts",
-			LevelKey:       "level",
-			NameKey:        "Logger",
-			CallerKey:      "caller",
-			MessageKey:     "msg",
-			StacktraceKey:  "stacktrace",
-			LineEnding:     zapcore.DefaultLineEnding,
-			EncodeLevel:    zapcore.CapitalColorLevelEncoder, // 在日志文件中使用大写字母记录日志级别
-			EncodeTime:     zapcore.ISO8601TimeEncoder,
-			EncodeDuration: zapcore.SecondsDurationEncoder,
-			EncodeCaller:   zapcore.FullCallerEncoder,
-		})
+		return zapcore.NewConsoleEncoder(getConsoleEncoderConfig())
 	}
-
-	return encoder
-
 }
 
-// 自定义时间编码器
-func timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	//enc.AppendString(t.Format("2006-01-02 15:04:05"))
-	enc.AppendString(t.Format("2006-01-02 15:04:05.000000000"))
+// getConsoleEncoderConfig 开发友好的控制台编码配置
+func getConsoleEncoderConfig() zapcore.EncoderConfig {
+	return zapcore.EncoderConfig{
+		MessageKey:     "msg",
+		LevelKey:       "level",
+		TimeKey:        "ts",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		StacktraceKey:  "stacktrace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.CapitalColorLevelEncoder, // 在日志文件中使用大写字母记录日志级别
+		EncodeTime:     zapcore.ISO8601TimeEncoder,
+		EncodeDuration: zapcore.SecondsDurationEncoder,
+		EncodeCaller:   zapcore.FullCallerEncoder,
+	}
+}
+
+// getJSONEncoderConfig 生产环境 JSON 编码配置
+func getJSONEncoderConfig() zapcore.EncoderConfig {
+	return zapcore.EncoderConfig{
+		MessageKey:     "msg",
+		LevelKey:       "level",
+		TimeKey:        "timestamp",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		StacktraceKey:  "stacktrace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeTime:     customTimeEncoder,             // 自定义时间格式
+		EncodeDuration: zapcore.MillisDurationEncoder, // 毫秒精度
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+	}
+}
+
+// customTimeEncoder 自定义时间格式
+func customTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+	// 指定时间序列化函数，将时间序列化为 `2006-01-02 15:04:05.000` 格式，更易读
+	enc.AppendString(t.Format("2006-01-02 15:04:05.000"))
 }
 
 func getLogLevel(logLevel string) zapcore.Level {
-	level := new(zapcore.Level)
-	err := level.UnmarshalText([]byte(logLevel))
-	if err != nil {
+	if logLevel == "" {
+		return zapcore.InfoLevel // 默认级别
+	}
+	var zapLevel zapcore.Level
+	if err := zapLevel.UnmarshalText([]byte(logLevel)); err != nil {
+		// 如果指定了非法的日志级别，则默认使用 error 级别
 		return zap.ErrorLevel
 	}
 
-	return *level
+	return zapLevel
 }
 
 func (l *ZapLogger) Info(msg string, tags ...Field) {
@@ -191,12 +196,14 @@ func (l *ZapLogger) Printf(format string, args ...any) {
 	l.Logger.Sugar().Infof(format, args...)
 }
 
-func (l *ZapLogger) Close() error {
+// Sync 刷新缓冲 (注: 文件同步可能报错)
+func (l *ZapLogger) Sync() error {
 	return l.Logger.Sync()
 }
 
-func (l *ZapLogger) Sync() error {
-	return l.Logger.Sync()
+// Close 兼容关闭接口
+func (l *ZapLogger) Close() error {
+	return l.Sync()
 }
 
 // With creates a child logger and adds structured context to it. Fields added
@@ -233,4 +240,28 @@ func (l *ZapLogger) toZapFields(fields []Field) []zap.Field {
 		zapFields = append(zapFields, zap.Any(arg.Key, arg.String))
 	}
 	return zapFields
+}
+
+func (l *ZapLogger) W(ctx context.Context) Logger {
+	contextExtractors := map[string]func(context.Context) string{
+		"x-request-id": RequestIDFromContext, // 从 context 中提取请求 ID
+		"x-trace-id":   TraceIDFromContext,   // 从 context 中提取跟踪 ID
+		"x-span-id":    SpanIDFromContext,    // 从 context 中提取跨度 ID
+	}
+
+	return l.WC(ctx, contextExtractors)
+}
+
+// WC 解析传入的 context，尝试提取关注的键值，并添加到 zap.Logger 结构化日志中.
+func (l *ZapLogger) WC(ctx context.Context, contextExtractors map[string]func(context.Context) string) Logger {
+	lc := l.clone()
+
+	// 遍历映射，从 context 中提取值并添加到日志中。
+	for k, extractor := range contextExtractors {
+		if v := extractor(ctx); v != "" {
+			lc.Logger = lc.Logger.With(zap.String(k, v))
+		}
+	}
+
+	return lc
 }
