@@ -25,7 +25,9 @@ type Database interface {
 
 // Transaction 事物接口
 type Transaction interface {
-	// Execute 执行一个事务方法，func为一个需要保证事务完整性的业务方法
+	//Execute 执行一个事务方法
+	//该方法接受一个上下文对象 ctx 和一个函数 fn，该函数用于执行事务内的操作。
+	//方法返回一个错误，可能是事务执行过程中出现的任何错误。
 	Execute(ctx context.Context, fn func(ctx context.Context) error) error
 }
 

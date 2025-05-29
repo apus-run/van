@@ -23,7 +23,7 @@ func DefaultOptions() *Options {
 	return &Options{
 		Mode:     "dev",
 		Writer:   zapcore.AddSync(os.Stdout),
-		LogLevel: "info",
+		LogLevel: "info", // zapcore.InfoLevel.String(),
 		Format:   FormatText,
 	}
 }
@@ -59,6 +59,9 @@ func WithFormat(format Format) Option {
 
 // WithWriter 日志输出
 func WithWriter(writer io.Writer) Option {
+	if writer == nil {
+		writer = os.Stdout // 默认输出到标准输出
+	}
 	return func(o *Options) {
 		o.Writer = zapcore.AddSync(writer)
 	}

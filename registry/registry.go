@@ -89,3 +89,21 @@ func (i *ServiceInstance) Equal(o interface{}) bool {
 
 	return i.ID == t.ID && i.Name == t.Name && i.Version == t.Version
 }
+
+var NoopRegistry Registry = &noopRegistry{}
+
+// NoopRegistry is a no-op registry implementation.
+type noopRegistry struct{}
+
+func (n *noopRegistry) Register(ctx context.Context, ins *ServiceInstance) error {
+	return nil
+}
+func (n *noopRegistry) Deregister(ctx context.Context, ins *ServiceInstance) error {
+	return nil
+}
+func (n *noopRegistry) GetService(ctx context.Context, name string) ([]*ServiceInstance, error) {
+	return nil, nil
+}
+func (n *noopRegistry) Watch(ctx context.Context, name string) (Watcher, error) {
+	return nil, nil
+}

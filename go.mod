@@ -99,6 +99,7 @@ require (
 	github.com/golang/glog v1.2.1 // indirect
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-version v1.6.0 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect

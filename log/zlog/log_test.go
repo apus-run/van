@@ -1,6 +1,7 @@
 package zlog
 
 import (
+	"context"
 	"io"
 	"os"
 	"testing"
@@ -54,3 +55,19 @@ func InitZapLogger(mode string) logger.Logger {
 	return logger.NewZapLogger(l)
 }
 */
+
+// 性能测试用例
+func BenchmarkZapLoggerW(b *testing.B) {
+	// 创建一个 zapLogger 实例（使用 zap.NewNop() 模拟 logger）
+	logger := &ZapLogger{zap.NewNop()}
+
+	// 创建一个包含上下文值的 context
+	ctx := WithRequestID(context.Background(), "request-id-12345")
+	ctx = WithUserID(ctx, "user-id-67890")
+
+	// 重复调用 W 函数，测量性能
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = logger.W(ctx)
+	}
+}
