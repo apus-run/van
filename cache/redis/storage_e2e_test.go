@@ -11,10 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/apus-run/van/cache"
+	storage "github.com/apus-run/van/cache"
 	"github.com/apus-run/van/cache/internal/errs"
 	cache "github.com/apus-run/van/cache/redis"
-	"github.com/apus-run/van/storage"
 )
 
 func TestCache_e2e_Set(t *testing.T) {
