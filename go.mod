@@ -61,6 +61,8 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/sanity-io/litter v1.5.5 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
+	github.com/sony/sonyflake v1.2.1 // indirect
+	github.com/sony/sonyflake/v2 v2.2.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.34.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
