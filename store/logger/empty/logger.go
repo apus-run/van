@@ -13,6 +13,6 @@ func NewLogger() *emptyLogger {
 
 // Error is a no-op method that satisfies the Logger interface.
 // It does not log any error messages or context.
-func (l *emptyLogger) Error(ctx context.Context, msg string, kvs ...any) {
+func (l *emptyLogger) Error(ctx context.Context, err error, msg string, kvs ...any) {
 	// No operation performed for logging errors
 }

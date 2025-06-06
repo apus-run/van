@@ -7,5 +7,5 @@ import (
 // Logger defines an interface for logging errors with contextual information.
 type Logger interface {
 	// Error logs an error message with the associated context.
-	Error(ctx context.Context, msg string, kvs ...any)
+	Error(ctx context.Context, err error, msg string, kvs ...any)
 }

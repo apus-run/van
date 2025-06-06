@@ -58,9 +58,7 @@ func (s *Store[T]) db(ctx context.Context, wheres ...where.Where) *gorm.DB {
 // Create inserts a new object into the database.
 func (s *Store[T]) Create(ctx context.Context, obj *T) error {
 	if err := s.db(ctx).Create(obj).Error; err != nil {
-		// Log the error with the context and object details
-
-		s.logger.Error(ctx, "Failed to insert object into database", "object", obj)
+		s.logger.Error(ctx, err, "Failed to insert object into database", "object", obj)
 		return err
 	}
 	return nil
@@ -69,7 +67,7 @@ func (s *Store[T]) Create(ctx context.Context, obj *T) error {
 // Update modifies an existing object in the database.
 func (s *Store[T]) Update(ctx context.Context, obj *T) error {
 	if err := s.db(ctx).Save(obj).Error; err != nil {
-		s.logger.Error(ctx, "Failed to update object in database", "object", obj)
+		s.logger.Error(ctx, err, "Failed to update object in database", "object", obj)
 		return err
 	}
 	return nil
@@ -79,7 +77,7 @@ func (s *Store[T]) Update(ctx context.Context, obj *T) error {
 func (s *Store[T]) Delete(ctx context.Context, opts *where.Options) error {
 	err := s.db(ctx, opts).Delete(new(T)).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		s.logger.Error(ctx, "Failed to delete object from database", "conditions", opts)
+		s.logger.Error(ctx, err, "Failed to delete object from database", "conditions", opts)
 		return err
 	}
 	return nil
@@ -89,7 +87,7 @@ func (s *Store[T]) Delete(ctx context.Context, opts *where.Options) error {
 func (s *Store[T]) Get(ctx context.Context, opts *where.Options) (*T, error) {
 	var obj T
 	if err := s.db(ctx, opts).First(&obj).Error; err != nil {
-		s.logger.Error(ctx, "Failed to retrieve object from database", "conditions", opts)
+		s.logger.Error(ctx, err, "Failed to retrieve object from database", "conditions", opts)
 		return nil, err
 	}
 	return &obj, nil
@@ -99,7 +97,7 @@ func (s *Store[T]) Get(ctx context.Context, opts *where.Options) (*T, error) {
 func (s *Store[T]) List(ctx context.Context, opts *where.Options) (count int64, ret []*T, err error) {
 	err = s.db(ctx, opts).Order("id desc").Find(&ret).Offset(-1).Limit(-1).Count(&count).Error
 	if err != nil {
-		s.logger.Error(ctx, "Failed to list objects from database", "conditions", opts)
+		s.logger.Error(ctx, err, "Failed to list objects from database", "conditions", opts)
 	}
 	return
 }
@@ -109,7 +107,7 @@ func (s *Store[T]) Count(ctx context.Context, opts *where.Options) (int64, error
 	var count int64
 	err := s.db(ctx, opts).Model(new(T)).Count(&count).Error
 	if err != nil {
-		s.logger.Error(ctx, "Failed to count objects in database", "conditions", opts)
+		s.logger.Error(ctx, err, "Failed to count objects in database", "conditions", opts)
 		return 0, err
 	}
 	return count, nil
@@ -120,9 +118,9 @@ func (s *Store[T]) Transaction(ctx context.Context, fn func(tx *gorm.DB) error) 
 	tx := s.db(ctx).Begin()
 	if err := fn(tx); err != nil {
 		if rollbackErr := tx.Rollback().Error; rollbackErr != nil {
-			s.logger.Error(ctx, "Transaction rollback failed", "error", rollbackErr)
+			s.logger.Error(ctx, err, "Transaction rollback failed", "error", rollbackErr)
 		}
-		s.logger.Error(ctx, "Transaction failed", "error", err)
+		s.logger.Error(ctx, err, "Transaction failed", "error", err)
 		return err
 	}
 	return tx.Commit().Error
