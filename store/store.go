@@ -28,6 +28,9 @@ type Store[T any] struct {
 // WithLogger returns an Option function that sets the provided Logger to the Store for logging purposes.
 func WithLogger[T any](logger Logger) Option[T] {
 	return func(s *Store[T]) {
+		if logger == nil {
+			logger = empty.NewLogger()
+		}
 		s.logger = logger
 	}
 }
@@ -111,17 +114,4 @@ func (s *Store[T]) Count(ctx context.Context, opts *where.Options) (int64, error
 		return 0, err
 	}
 	return count, nil
-}
-
-// Transaction executes a function within a database transaction.
-func (s *Store[T]) Transaction(ctx context.Context, fn func(tx *gorm.DB) error) error {
-	tx := s.db(ctx).Begin()
-	if err := fn(tx); err != nil {
-		if rollbackErr := tx.Rollback().Error; rollbackErr != nil {
-			s.logger.Error(ctx, err, "Transaction rollback failed", "error", rollbackErr)
-		}
-		s.logger.Error(ctx, err, "Transaction failed", "error", err)
-		return err
-	}
-	return tx.Commit().Error
 }
