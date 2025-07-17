@@ -47,6 +47,23 @@ func ExampleApply() {
 	// &{Tom 18}
 }
 
+func NewUser(opts ...Option[User]) *User {
+	u := &User{
+		name: "default",
+		age:  18,
+	}
+	Apply[User](u, opts...)
+	return u
+}
+
+func TestNewUser(t *testing.T) {
+	u := NewUser(WithName("Tom"), WithAge(20))
+	assert.Equal(t, &User{name: "Tom", age: 20}, u)
+
+	u = NewUser()
+	assert.Equal(t, &User{name: "default", age: 18}, u)
+}
+
 func WithNameErr(name string) OptionErr[User] {
 	return func(u *User) error {
 		if name == "" {
