@@ -15,6 +15,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
+	github.com/guregu/null v4.0.0+incompatible
 	github.com/iancoleman/strcase v0.3.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lithammer/shortuuid/v4 v4.0.0
@@ -56,7 +57,6 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/guregu/null v4.0.0+incompatible // indirect
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
@@ -109,7 +109,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
